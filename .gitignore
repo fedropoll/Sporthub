@@ -1,0 +1,74 @@
+# Python кэш файлы
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Виртуальное окружение (название может отличаться)
+venv/
+env/
+.venv/
+
+# Файл с секретами и конфигурацией окружения
+.env
+
+# База данных SQLite (если не хочешь хранить её в репозитории)
+db.sqlite3
+
+# Логи
+*.log
+
+# Файлы миграций, которые часто создаются автоматически
+*/migrations/*.py
+*/migrations/*.pyc
+!*/migrations/__init__.py
+
+# Статические файлы, если собираешь в отдельную папку
+staticfiles/
+
+# PyCharm IDE
+.idea/
+
+# VS Code
+.vscode/
+
+# MacOS системные файлы
+.DS_Store
+
+# Byte-compiled / optimized / DLL files
+*.pyc
+*.pyo
+*.pyd
+
+# Distribution / packaging
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Pytest cache
+.pytest_cache/
+
+# Coverage reports
+htmlcov/
+.coverage
+
+# mypy cache
+.mypy_cache/
+
+# celery beat schedule file
+celerybeat-schedule
+
+# Django stuff:
+local_settings.py
+
