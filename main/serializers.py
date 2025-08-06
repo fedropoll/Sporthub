@@ -1,9 +1,10 @@
-from rest_framework import serializers
 from django.contrib.auth.models import User
 from .models import UserProfile, PasswordResetCode
 from .utils import generate_and_send_code
 from rest_framework.exceptions import AuthenticationFailed
-
+from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
+from rest_framework import serializers
+from django.contrib.auth import get_user_model
 class RegisterSerializer(serializers.Serializer):
     email = serializers.EmailField()
     password = serializers.CharField(write_only=True, min_length=8)
@@ -27,7 +28,7 @@ class RegisterSerializer(serializers.Serializer):
             password=validated_data['password'],
             first_name=validated_data['firstName'],
             last_name=validated_data['lastName'],
-            is_active=False  # Активируем после верификации
+            is_active=False
         )
         UserProfile.objects.create(
             user=user,
@@ -63,7 +64,6 @@ class VerifyCodeSerializer(serializers.Serializer):
         return data
 
 
-from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 
 class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
     def validate(self, attrs):
@@ -85,3 +85,29 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
             "password": password
         })
 # https://github.com/fedropoll/Klub
+
+
+User = get_user_model()
+
+class MyTokenObtainPairSerializer(TokenObtainPairSerializer):
+    role = serializers.CharField(write_only=True)
+
+    def validate(self, attrs):
+        email = attrs.get("email")
+        password = attrs.get("password")
+        role = attrs.get("role")
+
+        user = User.objects.filter(email=email).first()
+        if not user:
+            raise serializers.ValidationError("Пользователь с таким email не найден")
+        if not user.check_password(password):
+            raise serializers.ValidationError("Неверный пароль")
+        if not hasattr(user, 'user_profile'):
+            raise serializers.ValidationError("Профиль пользователя не найден")
+        if user.user_profile.role != role:
+            raise serializers.ValidationError("Роль пользователя не совпадает")
+
+        data = super().validate(attrs)
+        data['role'] = user.user_profile.role
+        data['email'] = user.email
+        return data
