@@ -1,8 +1,17 @@
 from rest_framework import serializers
-from django.contrib.auth.models import User
+from django.contrib.auth import get_user_model
 from .models import UserProfile, PasswordResetCode
 from .utils import generate_and_send_code
 from rest_framework.exceptions import ValidationError
+
+User = get_user_model()
+
+
+class UserShortSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = ['id', 'username', 'first_name', 'last_name', 'email']
+
 
 class RegisterSerializer(serializers.Serializer):
     email = serializers.EmailField(
@@ -35,16 +44,14 @@ class RegisterSerializer(serializers.Serializer):
         default=False,
         help_text="Запомнить меня на этом устройстве?"
     )
+
     def validate(self, data):
         if data['password'] != data['confirmPassword']:
             raise ValidationError({"confirmPassword": "Пароли не совпадают"})
-
         if User.objects.filter(email=data['email']).exists():
             raise ValidationError({"email": "Пользователь с таким email уже существует"})
-
         if User.objects.filter(username=data['email']).exists():
             raise ValidationError({"email": "Пользователь с таким email уже существует"})
-
         return data
 
     def create(self, validated_data):
@@ -56,13 +63,11 @@ class RegisterSerializer(serializers.Serializer):
             last_name=validated_data['lastName'],
             is_active=False
         )
-
         UserProfile.objects.create(
             user=user,
             phone_number=validated_data['phone_number'],
             birth_date=validated_data['birth_date']
         )
-
         generate_and_send_code(user)
         return user
 
@@ -76,7 +81,6 @@ class VerifyCodeSerializer(serializers.Serializer):
             user = User.objects.get(email=data['email'])
         except User.DoesNotExist:
             raise ValidationError({"email": "Пользователь не найден"})
-
         try:
             reset_code = PasswordResetCode.objects.filter(
                 user=user,
@@ -84,18 +88,14 @@ class VerifyCodeSerializer(serializers.Serializer):
             ).latest('created_at')
         except PasswordResetCode.DoesNotExist:
             raise ValidationError({"code": "Код не найден или уже использован"})
-
         if reset_code.code != data['code']:
             raise ValidationError({"code": "Неверный код"})
-
         if reset_code.is_expired():
             raise ValidationError({"code": "Код истек. Запросите новый"})
-
         user.is_active = True
         user.save()
         reset_code.is_used = True
         reset_code.save()
-
         data['user'] = user
         return data
 
@@ -105,50 +105,30 @@ class LoginSerializer(serializers.Serializer):
     password = serializers.CharField(write_only=True)
     remember = serializers.BooleanField(default=False)
 
-    def validate(self, data):
-        try:
-            user = User.objects.get(email=data['email'])
-        except User.DoesNotExist:
-            raise ValidationError({"email": "Пользователь с таким email не найден"})
 
-        if not user.check_password(data['password']):
-            raise ValidationError({"password": "Неверный пароль"})
-
-        if not user.is_active:
-            raise ValidationError({"email": "Аккаунт не активирован. Проверьте почту"})
-
-        data['user'] = user
-        return data
-
-
+# --- Вот этот код нужно добавить ---
 class ForgotPasswordSerializer(serializers.Serializer):
     email = serializers.EmailField()
 
     def validate_email(self, value):
-        try:
-            user = User.objects.get(email=value)
-            if not user.is_active:
-                raise ValidationError("Аккаунт не активирован")
-        except User.DoesNotExist:
-            raise ValidationError("Пользователь с таким email не найден")
+        if not User.objects.filter(email=value).exists():
+            raise ValidationError("Пользователь с таким email не найден.")
         return value
 
 
 class ResetPasswordSerializer(serializers.Serializer):
     email = serializers.EmailField()
     code = serializers.CharField(max_length=4, min_length=4)
-    password = serializers.CharField(write_only=True, min_length=8)
-    confirmPassword = serializers.CharField(write_only=True)
+    new_password = serializers.CharField(write_only=True, min_length=8)
+    confirm_new_password = serializers.CharField(write_only=True, min_length=8)
 
     def validate(self, data):
-        if data['password'] != data['confirmPassword']:
-            raise ValidationError({"confirmPassword": "Пароли не совпадают"})
-
+        if data['new_password'] != data['confirm_new_password']:
+            raise ValidationError({"confirm_new_password": "Пароли не совпадают"})
         try:
             user = User.objects.get(email=data['email'])
         except User.DoesNotExist:
             raise ValidationError({"email": "Пользователь не найден"})
-
         try:
             reset_code = PasswordResetCode.objects.filter(
                 user=user,
@@ -156,25 +136,10 @@ class ResetPasswordSerializer(serializers.Serializer):
             ).latest('created_at')
         except PasswordResetCode.DoesNotExist:
             raise ValidationError({"code": "Код не найден или уже использован"})
-
         if reset_code.code != data['code']:
             raise ValidationError({"code": "Неверный код"})
-
         if reset_code.is_expired():
             raise ValidationError({"code": "Код истек. Запросите новый"})
-
         data['user'] = user
         data['reset_code'] = reset_code
         return data
-
-    def save(self):
-        user = self.validated_data['user']
-        reset_code = self.validated_data['reset_code']
-
-        user.set_password(self.validated_data['password'])
-        user.save()
-
-        reset_code.is_used = True
-        reset_code.save()
-
-        return user
