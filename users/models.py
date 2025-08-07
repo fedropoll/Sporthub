@@ -14,6 +14,15 @@ class UserProfile(models.Model):
     def __str__(self):
         return f"{self.user.first_name} {self.user.last_name}"
 
+class UserProfileEdit(models.Model):  # Новая модель для редактируемых данных
+    user_profile = models.OneToOneField(UserProfile, on_delete=models.CASCADE)
+    edited_phone_number = models.CharField(max_length=20, blank=True, null=True)
+    edited_address = models.CharField(max_length=50, blank=True, null=True)
+    edited_gender = models.CharField(max_length=10, choices=(('M', 'Male'), ('F', 'Female')), blank=True, null=True)
+
+    def __str__(self):
+        return f"Edit for {self.user_profile}"
+
 class PasswordResetCode(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     code = models.CharField(max_length=4)

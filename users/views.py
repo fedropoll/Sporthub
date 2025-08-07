@@ -208,7 +208,7 @@ class UserProfileEditView(APIView):
 
     @swagger_auto_schema(
         operation_summary="Обновить профиль пользователя",
-        request_body=UserProfileSerializer,
+        request_body=UserProfileEditSerializer,
         responses={
             200: openapi.Response('Профиль обновлен', UserProfileSerializer),
             400: 'Неверные данные',
@@ -266,22 +266,35 @@ class ClassScheduleView(APIView):
 
 class JoinclubView(APIView):
     permission_classes = [IsAuthenticated]
+
     @swagger_auto_schema(
         operation_summary="Получить список записей на кружки",
         responses={
-            200: 'Список записей',
-            404: 'Записи не найдены'
+            200: openapi.Response('Список записей', JoinclubSerializer(many=True)),
+            404: 'Записи не найдены или профиль отсутствует'
         }
     )
     def get(self, request):
-        joinclubs = Joinclub.objects.filter(user=request.user.userprofile)
+        try:
+            user_profile = request.user.userprofile
+        except UserProfile.DoesNotExist:
+            return Response({
+                'success': False,
+                'message': 'Профиль пользователя не найден'
+            }, status=status.HTTP_404_NOT_FOUND)
+
+        joinclubs = Joinclub.objects.filter(user=user_profile)
         serializer = JoinclubSerializer(joinclubs, many=True)
-        return Response({"success": True, "data": serializer.data}, status=status.HTTP_200_OK)
+        return Response({
+            'success': True,
+            'data': serializer.data
+        }, status=status.HTTP_200_OK)
+
     @swagger_auto_schema(
         operation_summary="Создать новую запись на кружок",
         request_body=JoinclubSerializer,
         responses={
-            201: 'Запись создана',
+            201: openapi.Response('Запись создана', JoinclubSerializer),
             400: 'Неверные данные'
         }
     )
@@ -289,27 +302,46 @@ class JoinclubView(APIView):
         serializer = JoinclubSerializer(data=request.data, context={'user': request.user.userprofile})
         if serializer.is_valid():
             serializer.save(user=request.user.userprofile)
-            return Response({"success": True, "message": "Запись успешно создана", "data": serializer.data}, status=status.HTTP_201_CREATED)
-        return Response({"success": False, "errors": serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({
+                'success': True,
+                'message': 'Запись успешно создана',
+                'data': serializer.data
+            }, status=status.HTTP_201_CREATED)
+        return Response({
+            'success': False,
+            'errors': serializer.errors
+        }, status=status.HTTP_400_BAD_REQUEST)
 
 class PaymentView(APIView):
     permission_classes = [IsAuthenticated]
+
     @swagger_auto_schema(
-        operation_summary="Получить список оплат",
+        operation_summary="Получить список оплат для конкретного Joinclub",
         responses={
-            200: 'Список оплат',
-            404: 'Оплаты не найдены'
+            200: openapi.Response('Список оплат', PaymentSerializer(many=True)),
+            404: 'Оплаты не найдены или Joinclub не существует'
         }
     )
-    def get(self, request):
-        payments = Payment.objects.filter(joinclub__user=request.user.userprofile)
-        serializer = PaymentSerializer(payments, many=True)
-        return Response({"success": True, "data": serializer.data}, status=status.HTTP_200_OK)
+    def get(self, request, joinclub_id):
+        try:
+            joinclub_instance = Joinclub.objects.get(id=joinclub_id, user=request.user.userprofile)
+            payments = Payment.objects.filter(joinclub=joinclub_instance)
+            serializer = PaymentSerializer(payments, many=True)
+            return Response({
+                'success': True,
+                'data': serializer.data
+            }, status=status.HTTP_200_OK)
+        except Joinclub.DoesNotExist:
+            return Response({
+                'success': False,
+                'message': 'Joinclub не найден'
+            }, status=status.HTTP_404_NOT_FOUND)
+
     @swagger_auto_schema(
         operation_summary="Создать новую оплату",
         request_body=PaymentSerializer,
         responses={
-            201: 'Оплата создана',
+            201: openapi.Response('Оплата создана', PaymentSerializer),
             400: 'Неверные данные'
         }
     )
@@ -322,10 +354,20 @@ class PaymentView(APIView):
                 joinclub_instance.payment_status = True
                 joinclub_instance.payment_amount = payment.amount
                 joinclub_instance.save()
-                return Response({"success": True, "message": "Оплата успешно добавлена", "data": serializer.data}, status=status.HTTP_201_CREATED)
-            return Response({"success": False, "errors": serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
+                return Response({
+                    'success': True,
+                    'message': 'Оплата успешно добавлена',
+                    'data': serializer.data
+                }, status=status.HTTP_201_CREATED)
+            return Response({
+                'success': False,
+                'errors': serializer.errors
+            }, status=status.HTTP_400_BAD_REQUEST)
         except Joinclub.DoesNotExist:
-            return Response({"success": False, "message": "Запись Joinclub не найдена"}, status=status.HTTP_404_NOT_FOUND)
+            return Response({
+                'success': False,
+                'message': 'Запись Joinclub не найдена'
+            }, status=status.HTTP_404_NOT_FOUND)
 
 class AttendanceView(APIView):
     permission_classes = [IsAuthenticated]

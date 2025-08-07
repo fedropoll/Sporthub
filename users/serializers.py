@@ -1,6 +1,6 @@
 from rest_framework import serializers
 from django.contrib.auth.models import User
-from .models import UserProfile, PasswordResetCode, ClassSchedule, Joinclub, Payment, Attendance
+from .models import UserProfile, UserProfileEdit, PasswordResetCode, ClassSchedule, Joinclub, Payment, Attendance
 from .utils import generate_and_send_code
 from rest_framework.exceptions import ValidationError
 
@@ -160,7 +160,7 @@ class ResetPasswordSerializer(serializers.Serializer):
         return user
 
 class UserProfileSerializer(serializers.ModelSerializer):
-    email = serializers.EmailField(source='user.email', read_only=True)  # Email читается только для отображения
+    email = serializers.EmailField(source='user.email', read_only=True)
     first_name = serializers.CharField(source='user.first_name', required=False)
     last_name = serializers.CharField(source='user.last_name', required=False)
 
@@ -183,6 +183,11 @@ class UserProfileSerializer(serializers.ModelSerializer):
         user.save()
 
         return instance
+
+class UserProfileEditSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = UserProfileEdit
+        fields = ['id', 'user_profile', 'edited_phone_number', 'edited_address', 'edited_gender']
 
 class ClassScheduleSerializer(serializers.ModelSerializer):
     class Meta:
