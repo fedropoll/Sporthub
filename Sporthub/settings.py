@@ -44,11 +44,6 @@ INSTALLED_APPS = [
     'rest_framework',
     'drf_yasg',
     'rest_framework_simplejwt',
-    'halls',
-    'trainers',
-    'clubs',
-    'advertisements',
-    'interaction',
 ]
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
