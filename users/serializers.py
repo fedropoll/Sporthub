@@ -187,17 +187,17 @@ class UserProfileSerializer(serializers.ModelSerializer):
 class ClassScheduleSerializer(serializers.ModelSerializer):
     class Meta:
         model = ClassSchedule
-        fields = ['id', 'title', 'day_of_week', 'start_time', 'end_time', 'max_participants', 'available_spots']
+        fields = ['id', 'title', 'day_of_week', 'start_time', 'end_time',]
 
 class JoinclubSerializer(serializers.ModelSerializer):
     class Meta:
         model = Joinclub
-        fields = ['id', 'user', 'schedule', 'registration_date', 'age_group', 'payment_status', 'payment_amount']
+        fields = ['id', 'user', 'schedule', 'registration_date', 'age_group']
 
 class PaymentSerializer(serializers.ModelSerializer):
     class Meta:
         model = Payment
-        fields = ['id', 'joinclub', 'card_number', 'cardholder_name', 'amount', 'payment_date']
+        fields = ['id', 'joinclub', 'card_number', 'amount', 'payment_date']
 
 class AttendanceSerializer(serializers.ModelSerializer):
     class Meta:
