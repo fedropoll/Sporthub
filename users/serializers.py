@@ -1,6 +1,6 @@
 from rest_framework import serializers
 from django.contrib.auth.models import User
-from .models import UserProfile, PasswordResetCode
+from .models import UserProfile, PasswordResetCode, ClassSchedule, Joinclub, Payment, Attendance
 from .utils import generate_and_send_code
 from rest_framework.exceptions import ValidationError
 
@@ -158,3 +158,52 @@ class ResetPasswordSerializer(serializers.Serializer):
         reset_code.save()
 
         return user
+
+class UserProfileSerializer(serializers.ModelSerializer):
+    email = serializers.EmailField(source='user.email', read_only=True)  # Email читается только для отображения
+    first_name = serializers.CharField(source='user.first_name', required=False)
+    last_name = serializers.CharField(source='user.last_name', required=False)
+
+    class Meta:
+        model = UserProfile
+        fields = ['id', 'phone_number', 'birth_date', 'address', 'gender', 'email', 'first_name', 'last_name']
+
+    def update(self, instance, validated_data):
+        user_data = validated_data.pop('user', {})
+        instance.phone_number = validated_data.get('phone_number', instance.phone_number)
+        instance.birth_date = validated_data.get('birth_date', instance.birth_date)
+        instance.address = validated_data.get('address', instance.address)
+        instance.gender = validated_data.get('gender', instance.gender)
+        instance.save()
+
+        # Обновление связанных полей пользователя
+        user = instance.user
+        user.first_name = user_data.get('first_name', user.first_name)
+        user.last_name = user_data.get('last_name', user.last_name)
+        user.save()
+
+        return instance
+
+class ClassScheduleSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ClassSchedule
+        fields = ['id', 'title', 'day_of_week', 'start_time', 'end_time', 'max_participants', 'available_spots']
+
+class JoinclubSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Joinclub
+        fields = ['id', 'user', 'schedule', 'registration_date', 'age_group', 'payment_status', 'payment_amount']
+
+class PaymentSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Payment
+        fields = ['id', 'joinclub', 'card_number', 'cardholder_name', 'amount', 'payment_date']
+
+class AttendanceSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Attendance
+        fields = ['id', 'joinclub', 'attendance_date', 'is_present', 'notes']
+
+    def create(self, validated_data):
+        joinclub = self.context.get('joinclub')
+        return Attendance.objects.create(joinclub=joinclub, **validated_data)
