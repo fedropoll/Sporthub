@@ -178,3 +178,30 @@ class ResetPasswordSerializer(serializers.Serializer):
         reset_code.save()
 
         return user
+from rest_framework import serializers
+from .models import Ad
+
+class AdSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Ad
+        fields = '__all__'
+
+    def validate(self, data):
+        required_fields = [
+            'title', 'description', 'phone', 'address',
+            'image', 'working_days', 'installment_plan',
+            'site_name', 'site_url', 'is_active'
+        ]
+        for field in required_fields:
+            if field not in data or data[field] in [None, '', [], {}]:
+                raise serializers.ValidationError({field: "Обязательное поле"})
+
+        if not isinstance(data['working_days'], dict):
+            raise serializers.ValidationError({'working_days': "Должно быть объектом (dict)"})
+        for day, time_range in data['working_days'].items():
+            if not isinstance(time_range, list) or len(time_range) != 2:
+                raise serializers.ValidationError({
+                    'working_days': f"День '{day}' должен содержать список из 2 значений времени (начало и конец)"
+                })
+
+        return data

@@ -5,6 +5,10 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from django.contrib.auth.models import User
 from drf_yasg.utils import swagger_auto_schema
 from drf_yasg import openapi
+from rest_framework.permissions import IsAdminUser
+from rest_framework import viewsets
+from .models import Ad
+from .serializers import AdSerializer
 
 from .serializers import (
     RegisterSerializer,
@@ -246,3 +250,94 @@ class LoginAPIView(APIView):
             })
         else:
             return Response({'error': 'Неверный пароль'}, status=400)
+
+from rest_framework import viewsets
+from rest_framework.permissions import IsAdminUser
+from drf_yasg.utils import swagger_auto_schema
+from drf_yasg import openapi
+from .models import Ad
+from .serializers import AdSerializer
+
+class AdViewSet(viewsets.ModelViewSet):
+    queryset = Ad.objects.all()
+    serializer_class = AdSerializer
+    permission_classes = [IsAdminUser]
+
+    @swagger_auto_schema(
+        tags=['📢 Реклама API'],
+        operation_summary='Получение списка всех объявлений',
+        operation_description=(
+            "Получает список всех рекламных объявлений. "
+            "Доступно только администраторам. "
+            "Отлично подходит для просмотра всех активных и неактивных объявлений."
+        ),
+        responses={200: AdSerializer(many=True), 403: 'Доступ запрещен'}
+    )
+    def list(self, request, *args, **kwargs):
+        return super().list(request, *args, **kwargs)
+
+    @swagger_auto_schema(
+        tags=['📢 Реклама API'],
+        operation_summary='Создание нового объявления',
+        operation_description=(
+            "Создает новое рекламное объявление. "
+            "Требуется аутентификация и права администратора. "
+        ),
+        request_body=AdSerializer,
+        responses={201: AdSerializer, 400: 'Ошибка валидации', 403: 'Доступ запрещен'}
+    )
+    def create(self, request, *args, **kwargs):
+        return super().create(request, *args, **kwargs)
+
+    @swagger_auto_schema(
+        tags=['📢 Реклама API'],
+        operation_summary='Получение деталей объявления',
+        operation_description=(
+            "Возвращает детали конкретного рекламного объявления по его ID. "
+            "Полезно для просмотра полной информации об одном объявлении."
+        ),
+        responses={200: AdSerializer, 404: 'Объявление не найдено'}
+    )
+    def retrieve(self, request, *args, **kwargs):
+        return super().retrieve(request, *args, **kwargs)
+
+    @swagger_auto_schema(
+        tags=['📢 Реклама API'],
+        operation_summary='Полное обновление объявления',
+        operation_description=(
+            "Полностью обновляет существующее рекламное объявление. "
+            "Требуется аутентификация и права администратора. "
+            "Все поля должны быть предоставлены."
+        ),
+        request_body=AdSerializer,
+        responses={200: AdSerializer, 400: 'Ошибка валидации', 404: 'Объявление не найдено'}
+    )
+    def update(self, request, *args, **kwargs):
+        return super().update(request, *args, **kwargs)
+
+    @swagger_auto_schema(
+        tags=['📢 Реклама API'],
+        operation_summary='Частичное обновление объявления',
+        operation_description=(
+            "Частично обновляет существующее рекламное объявление. "
+            "Требуется аутентификация и права администратора. "
+            "Можно обновить только часть полей."
+        ),
+        request_body=AdSerializer,
+        responses={200: AdSerializer, 400: 'Ошибка валидации', 404: 'Объявление не найдено'}
+    )
+    def partial_update(self, request, *args, **kwargs):
+        return super().partial_update(request, *args, **kwargs)
+
+    @swagger_auto_schema(
+        tags=['📢 Реклама API'],
+        operation_summary='Удаление объявления',
+        operation_description=(
+            "Удаляет существующее рекламное объявление. "
+            "Требуется аутентификация и права администратора. "
+            "Будьте осторожны, это действие необратимо!"
+        ),
+        responses={204: 'Успешное удаление', 404: 'Объявление не найдено'}
+    )
+    def destroy(self, request, *args, **kwargs):
+        return super().destroy(request, *args, **kwargs)
