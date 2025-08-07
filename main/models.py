@@ -7,6 +7,9 @@ class UserProfile(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE)
     phone_number = models.CharField(max_length=20)
     birth_date = models.DateField()
+    address = models.CharField(max_length=50)
+    gender = models.CharField(max_length=10, choices=(('M', 'Male'), ('F', 'Female')))
+    gmail = models.EmailField()
 
     def __str__(self):
         return f"{self.user.first_name} {self.user.last_name}"
