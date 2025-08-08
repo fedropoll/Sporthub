@@ -1,8 +1,37 @@
 from rest_framework import serializers
 from django.contrib.auth.models import User
-from .models import UserProfile, PasswordResetCode
-from .utils import generate_and_send_code
 from rest_framework.exceptions import ValidationError
+from .models import UserProfile, PasswordResetCode, Ad, Hall, Club, Trainer, Review, Notification
+from .utils import generate_and_send_code
+
+class UserSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = ['id', 'username', 'email', 'first_name', 'last_name']
+        read_only_fields = ['id', 'username']
+
+class UserProfileSerializer(serializers.ModelSerializer):
+    user = UserSerializer(read_only=True)
+
+    class Meta:
+        model = UserProfile
+        fields = ['user', 'phone_number', 'birth_date', 'has_paid', 'sport']  # Удалено 'avatar'
+        read_only_fields = ['has_paid', 'sport']
+
+class PasswordChangeSerializer(serializers.Serializer):
+    old_password = serializers.CharField(required=True)
+    new_password = serializers.CharField(required=True, min_length=8)
+
+    def validate_old_password(self, value):
+        user = self.context['request'].user
+        if not user.check_password(value):
+            raise serializers.ValidationError("Неверный старый пароль")
+        return value
+
+    def save(self):
+        user = self.context['request'].user
+        user.set_password(self.validated_data['new_password'])
+        user.save()
 
 class RegisterSerializer(serializers.Serializer):
     email = serializers.EmailField(
@@ -35,13 +64,13 @@ class RegisterSerializer(serializers.Serializer):
         default=False,
         help_text="Запомнить меня на этом устройстве?"
     )
+
     def validate(self, data):
         if data['password'] != data['confirmPassword']:
             raise ValidationError({"confirmPassword": "Пароли не совпадают"})
 
         if User.objects.filter(email=data['email']).exists():
             raise ValidationError({"email": "Пользователь с таким email уже существует"})
-
         if User.objects.filter(username=data['email']).exists():
             raise ValidationError({"email": "Пользователь с таким email уже существует"})
 
@@ -178,8 +207,7 @@ class ResetPasswordSerializer(serializers.Serializer):
         reset_code.save()
 
         return user
-from rest_framework import serializers
-from .models import Ad
+
 
 class AdSerializer(serializers.ModelSerializer):
     class Meta:
@@ -205,3 +233,73 @@ class AdSerializer(serializers.ModelSerializer):
                 })
 
         return data
+
+
+class HallSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Hall
+        fields = '__all__'
+
+
+class ClubSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Club
+        fields = '__all__'
+
+
+class TrainerSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Trainer
+        fields = '__all__'
+
+
+class TrainerNameSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Trainer
+        fields = ['first_name', 'last_name']
+
+
+class ClientDetailSerializer(serializers.ModelSerializer):
+    user = serializers.CharField(source='user.username', read_only=True)
+    first_name = serializers.CharField(source='user.first_name', read_only=True)
+    last_name = serializers.CharField(source='user.last_name', read_only=True)
+    trainer = TrainerNameSerializer(read_only=True)
+
+    class Meta:
+        model = UserProfile
+        fields = ['user', 'first_name', 'last_name', 'trainer', 'sport', 'has_paid']
+
+
+class ReviewSerializer(serializers.ModelSerializer):
+    user_info = serializers.SerializerMethodField()
+    trainer_name = serializers.CharField(source='trainer.first_name', read_only=True)
+    club_name = serializers.CharField(source='club.title', read_only=True)
+
+    def get_user_info(self, obj):
+        return {
+            'username': obj.user.username,
+            'email': obj.user.email
+        }
+
+    class Meta:
+        model = Review
+        fields = ['id', 'user', 'user_info', 'trainer', 'trainer_name', 'club', 'club_name', 'text', 'rating',
+                  'created_at']
+        read_only_fields = ['id', 'user_info', 'trainer_name', 'club_name', 'created_at']
+
+
+class NotificationSerializer(serializers.ModelSerializer):
+    user_info = serializers.SerializerMethodField()
+
+    def get_user_info(self, obj):
+        if obj.user:
+            return {
+                'username': obj.user.username,
+                'email': obj.user.email
+            }
+        return None
+
+    class Meta:
+        model = Notification
+        fields = ['id', 'user', 'user_info', 'message', 'type', 'is_read', 'created_at']
+        read_only_fields = ['id', 'user', 'user_info', 'message', 'type', 'created_at']

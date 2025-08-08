@@ -12,3 +12,4 @@ PyYAML==6.0.2
 sqlparse==0.5.3
 typing_extensions==4.13.2
 uritemplate==4.2.0
+dj-database-url==3.0.1
