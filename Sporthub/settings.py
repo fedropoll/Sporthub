@@ -14,6 +14,9 @@ import dj_database_url
 from dotenv import load_dotenv
 from pathlib import Path
 from datetime import timedelta
+import stripe
+
+stripe.api_key = "sk_test_51RtraO9OcwNpz5T4gdpVXRnB7HoHB5Cq7rnWEDMjNv8qb4vIlbQyhJrnHSKTtMnbTOJVOpfrohM6B7TwNdLGtyfY00fggb3hd9"
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
