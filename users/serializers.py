@@ -168,11 +168,8 @@ class UserProfileSerializer(serializers.ModelSerializer):
         model = UserProfile
         fields = ['id', 'first_name', 'last_name', 'phone_number', 'birth_date', 'address', 'gender', 'email']
 
-
     def update(self, instance, validated_data):
         user_data = validated_data.pop('user', {})
-        instance.first_name = validated_data.get('first_name', instance.first_name)
-        instance.last_name = validated_data.get('last_name', instance.last_name)
         instance.phone_number = validated_data.get('phone_number', instance.phone_number)
         instance.birth_date = validated_data.get('birth_date', instance.birth_date)
         instance.address = validated_data.get('address', instance.address)

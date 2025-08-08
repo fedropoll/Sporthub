@@ -25,11 +25,16 @@ from .utils import generate_and_send_code
 
 class RegisterView(APIView):
     @swagger_auto_schema(
-        tags=["Регистрация"],
+        tags=["Аутентификация"],
+        operation_summary="Регистрация нового пользователя",
+        operation_description="""
+        Создаёт нового пользователя. После успешной регистрации на указанный адрес электронной почты
+        отправляется четырёхзначный код для верификации.
+        """,
         request_body=RegisterSerializer,
         responses={
-            201: openapi.Response('Успешная регистрация'),
-            400: 'Ошибка валидации'
+            201: openapi.Response('Успешная регистрация', examples={'application/json': {'success': True, 'message': 'На адрес электронной почты, который вы указали, должен был прийти четырехзначный код.', 'email': 'test@example.com'}}),
+            400: openapi.Response('Ошибка валидации', examples={'application/json': {'success': False, 'errors': {'email': ['Пользователь с таким email уже существует.']}}})
         }
     )
     def post(self, request):
@@ -49,11 +54,17 @@ class RegisterView(APIView):
 
 class VerifyCodeView(APIView):
     @swagger_auto_schema(
-        tags=["Регистрация"],
+        tags=["Аутентификация"],
+        operation_summary="Верификация аккаунта по коду",
+        operation_description="""
+        Активирует аккаунт пользователя, используя код, полученный на email.
+        После успешной верификации возвращает пару JWT-токенов (access и refresh)
+        для дальнейшей работы с API.
+        """,
         request_body=VerifyCodeSerializer,
         responses={
-            200: openapi.Response('Успешная верификация'),
-            400: 'Неверный код'
+            200: openapi.Response('Успешная верификация', examples={'application/json': {'success': True, 'message': 'Аккаунт успешно активирован', 'tokens': {'refresh': '...', 'access': '...'}, 'user': {'id': 1, 'email': 'test@example.com', 'first_name': 'Иван', 'last_name': 'Петров'}}}),
+            400: openapi.Response('Неверный код или email', examples={'application/json': {'success': False, 'errors': {'code': ['Неверный код верификации']}}})
         }
     )
     def post(self, request):
@@ -84,11 +95,17 @@ class VerifyCodeView(APIView):
 
 class LoginView(APIView):
     @swagger_auto_schema(
-        tags=["Регистрация"],
+        tags=["Аутентификация"],
+        operation_summary="Вход пользователя",
+        operation_description="""
+        Аутентифицирует пользователя по email и паролю. Возвращает JWT-токены
+        для авторизованного доступа к API. Если флаг `remember` установлен,
+        срок действия refresh-токена будет увеличен.
+        """,
         request_body=LoginSerializer,
         responses={
-            200: openapi.Response('Успешный вход'),
-            400: 'Неверные данные'
+            200: openapi.Response('Успешный вход', examples={'application/json': {'success': True, 'message': 'Добро пожаловать!', 'tokens': {'refresh': '...', 'access': '...'}, 'user': {'id': 1, 'email': 'test@example.com', 'first_name': 'Иван', 'last_name': 'Петров'}}}),
+            400: openapi.Response('Неверные данные', examples={'application/json': {'success': False, 'errors': {'detail': 'Неверные учётные данные'}}})
         }
     )
     def post(self, request):
@@ -124,11 +141,16 @@ class LoginView(APIView):
 
 class ForgotPasswordView(APIView):
     @swagger_auto_schema(
-        tags=["Регистрация"],
+        tags=["Аутентификация"],
+        operation_summary="Отправка кода для сброса пароля",
+        operation_description="""
+        Отправляет код для сброса пароля на email, если пользователь с таким
+        адресом существует.
+        """,
         request_body=ForgotPasswordSerializer,
         responses={
-            200: openapi.Response('Код отправлен'),
-            400: 'Email не найден'
+            200: openapi.Response('Код отправлен', examples={'application/json': {'success': True, 'message': 'Код для сброса пароля отправлен на ваш адрес электронной почты', 'email': 'test@example.com'}}),
+            400: openapi.Response('Email не найден', examples={'application/json': {'success': False, 'errors': {'email': ['Пользователь с таким email не найден.']}}})
         }
     )
     def post(self, request):
@@ -151,11 +173,16 @@ class ForgotPasswordView(APIView):
 
 class ResetPasswordView(APIView):
     @swagger_auto_schema(
-        tags=["Регистрация"],
+        tags=["Аутентификация"],
+        operation_summary="Сброс пароля",
+        operation_description="""
+        Позволяет сбросить пароль пользователя, используя email, код верификации
+        и новый пароль. Код должен быть предварительно отправлен через `ForgotPasswordView`.
+        """,
         request_body=ResetPasswordSerializer,
         responses={
-            200: openapi.Response('Пароль изменен'),
-            400: 'Неверные данные'
+            200: openapi.Response('Пароль изменен', examples={'application/json': {'success': True, 'message': 'Пароль успешно изменен. Теперь вы можете войти с новым паролем'}}),
+            400: openapi.Response('Неверные данные', examples={'application/json': {'success': False, 'errors': {'code': ['Неверный код верификации']}}})
         }
     )
     def post(self, request):
@@ -175,17 +202,22 @@ class ResetPasswordView(APIView):
 
 class ResendCodeView(APIView):
     @swagger_auto_schema(
-        tags=["Регистрация"],
+        tags=["Аутентификация"],
+        operation_summary="Повторная отправка кода верификации",
+        operation_description="""
+        Повторно отправляет код верификации на email пользователя. Может
+        использоваться как для активации аккаунта, так и для сброса пароля.
+        """,
         request_body=openapi.Schema(
             type=openapi.TYPE_OBJECT,
             required=['email'],
             properties={
-                'email': openapi.Schema(type=openapi.TYPE_STRING, format='email'),
+                'email': openapi.Schema(type=openapi.TYPE_STRING, format='email', description='Email пользователя'),
             }
         ),
         responses={
-            200: openapi.Response('Код отправлен повторно'),
-            400: 'Email не найден'
+            200: openapi.Response('Код отправлен повторно', examples={'application/json': {'success': True, 'message': 'Код отправлен повторно'}}),
+            400: openapi.Response('Email не найден', examples={'application/json': {'success': False, 'errors': {'email': ['Пользователь не найден']}}})
         }
     )
     def post(self, request):
@@ -213,9 +245,17 @@ class UserProfileView(APIView):
     permission_classes = [IsAuthenticated]
 
     @swagger_auto_schema(
-        tags=['Профиль'],
+        tags=['Профиль пользователя'],
         operation_summary="Получить данные профиля пользователя",
-        responses={200: openapi.Response('Данные профиля', UserProfileSerializer)}
+        operation_description="""
+        Возвращает данные профиля (UserProfile) текущего аутентифицированного пользователя.
+        Требуется авторизация.
+        """,
+        responses={
+            200: openapi.Response('Данные профиля', UserProfileSerializer),
+            401: 'Не авторизован',
+            404: openapi.Response('Профиль не найден', examples={'application/json': {'success': False, 'message': 'Профиль не найден'}})
+        }
     )
     def get(self, request):
         try:
@@ -232,11 +272,19 @@ class UserProfileView(APIView):
             }, status=status.HTTP_404_NOT_FOUND)
 
     @swagger_auto_schema(
-        tags=['Профиль'],
+        tags=['Профиль пользователя'],
         operation_summary="Редактировать данные профиля пользователя",
+        operation_description="""
+        Обновляет данные профиля (UserProfile) текущего аутентифицированного пользователя.
+        Используется `partial=True`, что позволяет обновлять только некоторые поля.
+        Требуется авторизация.
+        """,
         request_body=UserProfileSerializer,
         responses={
-            200: openapi.Response('Обноовленные данные профиля', UserProfileSerializer)
+            200: openapi.Response('Обновленные данные профиля', UserProfileSerializer),
+            400: openapi.Response('Ошибка валидации', examples={'application/json': {'success': False, 'errors': {'phone_number': ['Неверный формат номера']}}}),
+            401: 'Не авторизован',
+            404: openapi.Response('Профиль не найден', examples={'application/json': {'success': False, 'message': 'Профиль не найден'}})
         }
     )
     def put(self, request):
@@ -265,9 +313,12 @@ class ClassScheduleView(APIView):
     @swagger_auto_schema(
     tags=['Расписание'],
     operation_summary="Получить список расписаний",
+    operation_description="""
+    Возвращает список всех доступных расписаний занятий. Требуется авторизация.
+    """,
         responses={
-            200: 'Список расписаний',
-            404: 'Расписания не найдены'
+            200: openapi.Response('Список расписаний', ClassScheduleSerializer(many=True)),
+            401: 'Не авторизован'
         }
     )
     def get(self, request):
@@ -277,10 +328,16 @@ class ClassScheduleView(APIView):
     @swagger_auto_schema(
     tags=['Расписание'],
     operation_summary="Создать новое расписание",
+    operation_description="""
+    Создаёт новую запись в расписании занятий. Требуется авторизация и,
+    вероятно, соответствующие права администратора (хотя в коде это явно
+    не указано).
+    """,
         request_body=ClassScheduleSerializer,
         responses={
-            201: 'Расписание создано',
-            400: 'Неверные данные'
+            201: openapi.Response('Расписание создано', ClassScheduleSerializer),
+            400: openapi.Response('Неверные данные', examples={'application/json': {'success': False, 'errors': {'title': ['Это поле обязательно.']}}}),
+            401: 'Не авторизован'
         }
     )
     def post(self, request):
@@ -295,9 +352,14 @@ class JoinclubView(APIView):
     @swagger_auto_schema(
         tags=['Записаться на кружок'],
         operation_summary="Получить список записей на кружки",
+        operation_description="""
+        Возвращает список всех кружков, на которые записан текущий аутентифицированный
+        пользователь. Требуется авторизация.
+        """,
         responses={
             200: openapi.Response('Список записей', JoinclubSerializer(many=True)),
-            404: 'Записи не найдены или профиль отсутствует'
+            401: 'Не авторизован',
+            404: openapi.Response('Записи не найдены или профиль отсутствует', examples={'application/json': {'success': False, 'message': 'Профиль пользователя не найден'}})
         }
     )
     def get(self, request):
@@ -319,10 +381,16 @@ class JoinclubView(APIView):
     @swagger_auto_schema(
         tags=['Записаться на кружок'],
         operation_summary="Создать новую запись на кружок",
+        operation_description="""
+        Позволяет текущему аутентифицированному пользователю записаться на
+        выбранное занятие из расписания. Проверяет, что пользователь
+        ещё не записан на это занятие. Требуется авторизация.
+        """,
         request_body=JoinclubSerializer,
         responses={
             201: openapi.Response('Запись создана', JoinclubSerializer),
-            400: 'Неверные данные или запись уже существует'
+            400: openapi.Response('Неверные данные или запись уже существует', examples={'application/json': {'success': False, 'message': 'Запись на этот кружок уже существует'}}),
+            401: 'Не авторизован'
         }
     )
     def post(self, request):
@@ -350,10 +418,15 @@ class PaymentView(APIView):
     permission_classes = [IsAuthenticated]
     @swagger_auto_schema(
         tags=['Оплата'],
-        operation_summary="Получить список оплат для конкретного Joinclub",
+        operation_summary="Получить список оплат для конкретной записи",
+        operation_description="""
+        Возвращает список всех оплат, связанных с конкретной записью на кружок (`joinclub`).
+        Требуется авторизация, и пользователь должен быть владельцем `joinclub`.
+        """,
         responses={
             200: openapi.Response('Список оплат', PaymentSerializer(many=True)),
-            404: 'Оплаты не найдены или Joinclub не существует'
+            401: 'Не авторизован',
+            404: openapi.Response('Joinclub не найден', examples={'application/json': {'success': False, 'message': 'Joinclub не найден'}})
         }
     )
     def get(self, request, joinclub_id):
@@ -374,10 +447,18 @@ class PaymentView(APIView):
     @swagger_auto_schema(
         tags=['Оплата'],
         operation_summary="Создать новую оплату",
+        operation_description="""
+        Создаёт новую запись об оплате для конкретной записи на кружок (`joinclub`).
+        После создания оплаты обновляет статус оплаты (`payment_status`) и сумму
+        (`payment_amount`) в соответствующей записи `Joinclub`.
+        Требуется авторизация, и пользователь должен быть владельцем `joinclub`.
+        """,
         request_body=PaymentSerializer,
         responses={
             201: openapi.Response('Оплата создана', PaymentSerializer),
-            400: 'Неверные данные'
+            400: openapi.Response('Неверные данные', examples={'application/json': {'success': False, 'errors': {'amount': ['Это поле обязательно.']}}}),
+            401: 'Не авторизован',
+            404: openapi.Response('Запись Joinclub не найдена', examples={'application/json': {'success': False, 'message': 'Запись Joinclub не найдена'}})
         }
     )
     def post(self, request, joinclub_id):
@@ -408,10 +489,16 @@ class AttendanceView(APIView):
     permission_classes = [IsAuthenticated]
     @swagger_auto_schema(
         tags=['Cписок посещаемости'],
-        operation_summary="Получить список посещаемости",
+        operation_summary="Получить список посещаемости и сводку",
+        operation_description="""
+        Возвращает список всех записей о посещаемости для конкретной записи на кружок (`joinclub`).
+        Также включает сводку посещаемости (количество присутствий, отсутствий и общее количество).
+        Требуется авторизация, и пользователь должен быть владельцем `joinclub`.
+        """,
         responses={
-            200: 'Список посещаемости',
-            404: 'Запись Joinclub не найдена'
+            200: openapi.Response('Список посещаемости', AttendanceSerializer(many=True)),
+            401: 'Не авторизован',
+            404: openapi.Response('Запись Joinclub не найдена', examples={'application/json': {'success': False, 'message': 'Запись Joinclub не найдена'}})
         }
     )
     def get(self, request, joinclub_id):
@@ -429,28 +516,5 @@ class AttendanceView(APIView):
                     'total_count': summary['total']
                 }
             }, status=status.HTTP_200_OK)
-        except Joinclub.DoesNotExist:
-            return Response({'success': False, 'message': 'Запись Joinclub не найдена'}, status=status.HTTP_404_NOT_FOUND)
-    @swagger_auto_schema(
-        tags=['Cписок посещаемости'],
-        operation_summary="Добавить запись о посещении",
-        request_body=AttendanceSerializer,
-        responses={
-            201: 'Успешно добавлено',
-            400: 'Неверные данные'
-        }
-    )
-    def post(self, request, joinclub_id):
-        try:
-            joinclub_instance = Joinclub.objects.get(id=joinclub_id, user=request.user.userprofile)
-            serializer = AttendanceSerializer(data=request.data, context={'joinclub': joinclub_instance})
-            if serializer.is_valid():
-                serializer.save()
-                return Response({
-                    'success': True,
-                    'message': 'Посещение успешно записано',
-                    'data': serializer.data
-                }, status=status.HTTP_201_CREATED)
-            return Response({'success': False, 'errors': serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
         except Joinclub.DoesNotExist:
             return Response({'success': False, 'message': 'Запись Joinclub не найдена'}, status=status.HTTP_404_NOT_FOUND)
