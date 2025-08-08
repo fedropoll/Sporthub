@@ -5,23 +5,16 @@ from datetime import timedelta
 
 class UserProfile(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE)
-    phone_number = models.CharField(max_length=20)
+    first_name = models.CharField(max_length=50, null=True, blank=True)
+    last_name = models.CharField(max_length=50, null=True, blank=True)
+    phone_number = models.CharField(max_length=20, null=True, blank=True)
     birth_date = models.DateField(null=True, blank=True)
-    address = models.CharField(max_length=50)
+    address = models.CharField(max_length=50, null=True, blank=True)
     gender = models.CharField(max_length=10,  choices=(('Мужской', 'Male'), ('Женский', 'Female')), null=True, blank=True)
-    email = models.EmailField(unique=True)
+    email = models.EmailField(unique=True, null=True, blank=True)
 
     def __str__(self):
         return f"{self.user.first_name} {self.user.last_name}"
-
-class UserProfileEdit(models.Model):  # Новая модель для редактируемых данных
-    user_profile = models.OneToOneField(UserProfile, on_delete=models.CASCADE)
-    edited_phone_number = models.CharField(max_length=20, blank=True, null=True)
-    edited_address = models.CharField(max_length=50, blank=True, null=True)
-    edited_gender = models.CharField(max_length=10, choices=(('M', 'Male'), ('F', 'Female')), blank=True, null=True)
-
-    def __str__(self):
-        return f"Edit for {self.user_profile}"
 
 class PasswordResetCode(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE)

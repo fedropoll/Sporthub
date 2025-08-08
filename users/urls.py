@@ -26,5 +26,5 @@ urlpatterns = [
     path('joinclubs/', JoinclubView.as_view(), name='joinclub'),
     path('payments/<int:joinclub_id>/', PaymentView.as_view(), name='payment'),
     path('attendance/<int:joinclub_id>/', AttendanceView.as_view(), name='attendance_view'),
-    path('profile/edit/', UserProfileView.as_view(), name='profile_edit'),
+    path('profile/', UserProfileView.as_view(), name='profile_view'),
 ]

@@ -6,7 +6,7 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from django.contrib.auth.models import User
 from drf_yasg.utils import swagger_auto_schema
 from drf_yasg import openapi
-from .models import UserProfile, ClassSchedule, Joinclub, Attendance
+from .models import UserProfile, ClassSchedule, Joinclub, Attendance, Payment
 from .serializers import UserProfileSerializer, ClassScheduleSerializer, JoinclubSerializer, PaymentSerializer, AttendanceSerializer
 
 from .serializers import (
@@ -25,6 +25,7 @@ from .utils import generate_and_send_code
 
 class RegisterView(APIView):
     @swagger_auto_schema(
+        tags=["Регистрация"],
         request_body=RegisterSerializer,
         responses={
             201: openapi.Response('Успешная регистрация'),
@@ -48,6 +49,7 @@ class RegisterView(APIView):
 
 class VerifyCodeView(APIView):
     @swagger_auto_schema(
+        tags=["Регистрация"],
         request_body=VerifyCodeSerializer,
         responses={
             200: openapi.Response('Успешная верификация'),
@@ -82,6 +84,7 @@ class VerifyCodeView(APIView):
 
 class LoginView(APIView):
     @swagger_auto_schema(
+        tags=["Регистрация"],
         request_body=LoginSerializer,
         responses={
             200: openapi.Response('Успешный вход'),
@@ -121,6 +124,7 @@ class LoginView(APIView):
 
 class ForgotPasswordView(APIView):
     @swagger_auto_schema(
+        tags=["Регистрация"],
         request_body=ForgotPasswordSerializer,
         responses={
             200: openapi.Response('Код отправлен'),
@@ -147,6 +151,7 @@ class ForgotPasswordView(APIView):
 
 class ResetPasswordView(APIView):
     @swagger_auto_schema(
+        tags=["Регистрация"],
         request_body=ResetPasswordSerializer,
         responses={
             200: openapi.Response('Пароль изменен'),
@@ -170,6 +175,7 @@ class ResetPasswordView(APIView):
 
 class ResendCodeView(APIView):
     @swagger_auto_schema(
+        tags=["Регистрация"],
         request_body=openapi.Schema(
             type=openapi.TYPE_OBJECT,
             required=['email'],
@@ -203,16 +209,34 @@ class ResendCodeView(APIView):
                 "errors": {"email": ["Пользователь не найден"]}
             }, status=status.HTTP_400_BAD_REQUEST)
 
-class UserProfileEditView(APIView):
+class UserProfileView(APIView):
     permission_classes = [IsAuthenticated]
 
     @swagger_auto_schema(
-        operation_summary="Обновить профиль пользователя",
-        request_body=UserProfileEditSerializer,
+        tags=['Профиль'],
+        operation_summary="Получить данные профиля пользователя",
+        responses={200: openapi.Response('Данные профиля', UserProfileSerializer)}
+    )
+    def get(self, request):
+        try:
+            user_profile = UserProfile.objects.get(user=request.user)
+            serializer = UserProfileSerializer(user_profile)
+            return Response({
+                'success': True,
+                'data': serializer.data
+            }, status=status.HTTP_200_OK)
+        except UserProfile.DoesNotExist:
+            return Response({
+                'success': False,
+                'message': 'Профиль не найден'
+            }, status=status.HTTP_404_NOT_FOUND)
+
+    @swagger_auto_schema(
+        tags=['Профиль'],
+        operation_summary="Редактировать данные профиля пользователя",
+        request_body=UserProfileSerializer,
         responses={
-            200: openapi.Response('Профиль обновлен', UserProfileSerializer),
-            400: 'Неверные данные',
-            404: 'Профиль не найден'
+            200: openapi.Response('Обноовленные данные профиля', UserProfileSerializer)
         }
     )
     def put(self, request):
@@ -239,6 +263,7 @@ class UserProfileEditView(APIView):
 class ClassScheduleView(APIView):
     permission_classes = [IsAuthenticated]
     @swagger_auto_schema(
+    tags=['Расписание'],
     operation_summary="Получить список расписаний",
         responses={
             200: 'Список расписаний',
@@ -250,6 +275,7 @@ class ClassScheduleView(APIView):
         serializer = ClassScheduleSerializer(schedules, many=True)
         return Response({"success": True, "data": serializer.data}, status=status.HTTP_200_OK)
     @swagger_auto_schema(
+    tags=['Расписание'],
     operation_summary="Создать новое расписание",
         request_body=ClassScheduleSerializer,
         responses={
@@ -266,8 +292,8 @@ class ClassScheduleView(APIView):
 
 class JoinclubView(APIView):
     permission_classes = [IsAuthenticated]
-
     @swagger_auto_schema(
+        tags=['Записаться на кружок'],
         operation_summary="Получить список записей на кружки",
         responses={
             200: openapi.Response('Список записей', JoinclubSerializer(many=True)),
@@ -291,17 +317,25 @@ class JoinclubView(APIView):
         }, status=status.HTTP_200_OK)
 
     @swagger_auto_schema(
+        tags=['Записаться на кружок'],
         operation_summary="Создать новую запись на кружок",
         request_body=JoinclubSerializer,
         responses={
             201: openapi.Response('Запись создана', JoinclubSerializer),
-            400: 'Неверные данные'
+            400: 'Неверные данные или запись уже существует'
         }
     )
     def post(self, request):
-        serializer = JoinclubSerializer(data=request.data, context={'user': request.user.userprofile})
+        user_profile = request.user.userprofile
+        serializer = JoinclubSerializer(data=request.data, context={'user': user_profile})
         if serializer.is_valid():
-            serializer.save(user=request.user.userprofile)
+            schedule_id = request.data.get('schedule')
+            if Joinclub.objects.filter(user=user_profile, schedule_id=schedule_id).exists():
+                return Response({
+                    'success': False,
+                    'message': 'Запись на этот кружок уже существует'
+                }, status=status.HTTP_400_BAD_REQUEST)
+            serializer.save(user=user_profile)
             return Response({
                 'success': True,
                 'message': 'Запись успешно создана',
@@ -314,8 +348,8 @@ class JoinclubView(APIView):
 
 class PaymentView(APIView):
     permission_classes = [IsAuthenticated]
-
     @swagger_auto_schema(
+        tags=['Оплата'],
         operation_summary="Получить список оплат для конкретного Joinclub",
         responses={
             200: openapi.Response('Список оплат', PaymentSerializer(many=True)),
@@ -338,6 +372,7 @@ class PaymentView(APIView):
             }, status=status.HTTP_404_NOT_FOUND)
 
     @swagger_auto_schema(
+        tags=['Оплата'],
         operation_summary="Создать новую оплату",
         request_body=PaymentSerializer,
         responses={
@@ -372,6 +407,7 @@ class PaymentView(APIView):
 class AttendanceView(APIView):
     permission_classes = [IsAuthenticated]
     @swagger_auto_schema(
+        tags=['Cписок посещаемости'],
         operation_summary="Получить список посещаемости",
         responses={
             200: 'Список посещаемости',
@@ -396,6 +432,7 @@ class AttendanceView(APIView):
         except Joinclub.DoesNotExist:
             return Response({'success': False, 'message': 'Запись Joinclub не найдена'}, status=status.HTTP_404_NOT_FOUND)
     @swagger_auto_schema(
+        tags=['Cписок посещаемости'],
         operation_summary="Добавить запись о посещении",
         request_body=AttendanceSerializer,
         responses={

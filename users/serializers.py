@@ -1,6 +1,6 @@
 from rest_framework import serializers
 from django.contrib.auth.models import User
-from .models import UserProfile, UserProfileEdit, PasswordResetCode, ClassSchedule, Joinclub, Payment, Attendance
+from .models import UserProfile, PasswordResetCode, ClassSchedule, Joinclub, Payment, Attendance
 from .utils import generate_and_send_code
 from rest_framework.exceptions import ValidationError
 
@@ -166,28 +166,25 @@ class UserProfileSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = UserProfile
-        fields = ['id', 'phone_number', 'birth_date', 'address', 'gender', 'email', 'first_name', 'last_name']
+        fields = ['id', 'first_name', 'last_name', 'phone_number', 'birth_date', 'address', 'gender', 'email']
+
 
     def update(self, instance, validated_data):
         user_data = validated_data.pop('user', {})
+        instance.first_name = validated_data.get('first_name', instance.first_name)
+        instance.last_name = validated_data.get('last_name', instance.last_name)
         instance.phone_number = validated_data.get('phone_number', instance.phone_number)
         instance.birth_date = validated_data.get('birth_date', instance.birth_date)
         instance.address = validated_data.get('address', instance.address)
         instance.gender = validated_data.get('gender', instance.gender)
         instance.save()
 
-        # Обновление связанных полей пользователя
         user = instance.user
         user.first_name = user_data.get('first_name', user.first_name)
         user.last_name = user_data.get('last_name', user.last_name)
         user.save()
 
         return instance
-
-class UserProfileEditSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = UserProfileEdit
-        fields = ['id', 'user_profile', 'edited_phone_number', 'edited_address', 'edited_gender']
 
 class ClassScheduleSerializer(serializers.ModelSerializer):
     class Meta:
