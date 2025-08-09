@@ -1,8 +1,10 @@
 from rest_framework import serializers
 from django.contrib.auth.models import User
 from rest_framework.exceptions import ValidationError
+from django.contrib.auth import authenticate
 from .models import UserProfile, PasswordResetCode, Ad, Hall, Club, Trainer, Review, Notification
 from .utils import generate_and_send_code
+
 
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
@@ -10,28 +12,6 @@ class UserSerializer(serializers.ModelSerializer):
         fields = ['id', 'username', 'email', 'first_name', 'last_name']
         read_only_fields = ['id', 'username']
 
-class UserProfileSerializer(serializers.ModelSerializer):
-    user = UserSerializer(read_only=True)
-
-    class Meta:
-        model = UserProfile
-        fields = ['user', 'phone_number', 'birth_date', 'has_paid', 'sport']  # Удалено 'avatar'
-        read_only_fields = ['has_paid', 'sport']
-
-class PasswordChangeSerializer(serializers.Serializer):
-    old_password = serializers.CharField(required=True)
-    new_password = serializers.CharField(required=True, min_length=8)
-
-    def validate_old_password(self, value):
-        user = self.context['request'].user
-        if not user.check_password(value):
-            raise serializers.ValidationError("Неверный старый пароль")
-        return value
-
-    def save(self):
-        user = self.context['request'].user
-        user.set_password(self.validated_data['new_password'])
-        user.save()
 
 class RegisterSerializer(serializers.Serializer):
     email = serializers.EmailField(
@@ -59,6 +39,16 @@ class RegisterSerializer(serializers.Serializer):
     )
     birth_date = serializers.DateField(
         help_text="Дата рождения в формате ГГГГ-ММ-ДД (например, 2000-01-01)."
+    )
+    gender = serializers.CharField(
+        max_length=10,
+        required=False,
+        help_text="Пол пользователя."
+    )
+    address = serializers.CharField(
+        max_length=100,
+        required=False,
+        help_text="Адрес проживания."
     )
     remember = serializers.BooleanField(
         default=False,
@@ -89,12 +79,60 @@ class RegisterSerializer(serializers.Serializer):
         UserProfile.objects.create(
             user=user,
             phone_number=validated_data['phone_number'],
-            birth_date=validated_data['birth_date']
+            birth_date=validated_data['birth_date'],
+            gender=validated_data.get('gender', ''),
+            address=validated_data.get('address', '')
         )
 
         generate_and_send_code(user)
         return user
 
+
+class UserProfileSerializer(serializers.ModelSerializer):
+    user = UserSerializer(read_only=True)
+    first_name = serializers.CharField(source='user.first_name', required=False)
+    last_name = serializers.CharField(source='user.last_name', required=False)
+    email = serializers.EmailField(source='user.email', required=False)
+
+    class Meta:
+        model = UserProfile
+        fields = ['user', 'first_name', 'last_name', 'email', 'phone_number', 'birth_date', 'has_paid', 'sport']
+        read_only_fields = ['has_paid', 'sport']
+
+    def update(self, instance, validated_data):
+        user_data = validated_data.pop('user', {})
+        user = instance.user
+
+        instance.phone_number = validated_data.get('phone_number', instance.phone_number)
+        instance.birth_date = validated_data.get('birth_date', instance.birth_date)
+        instance.save()
+
+        user.first_name = user_data.get('first_name', user.first_name)
+        user.last_name = user_data.get('last_name', user.last_name)
+        user.email = user_data.get('email', user.email)
+        user.save()
+
+        return instance
+
+
+class PasswordChangeSerializer(serializers.Serializer):
+    old_password = serializers.CharField(required=True)
+    new_password = serializers.CharField(required=True, min_length=8)
+    confirm_new_password = serializers.CharField(required=True, min_length=8)
+
+    def validate(self, data):
+        if data['new_password'] != data['confirm_new_password']:
+            raise serializers.ValidationError({"confirm_new_password": "Новые пароли не совпадают"})
+
+        user = self.context['request'].user
+        if not user.check_password(data['old_password']):
+            raise serializers.ValidationError({"old_password": "Неверный старый пароль"})
+        return data
+
+    def save(self):
+        user = self.context['request'].user
+        user.set_password(self.validated_data['new_password'])
+        user.save()
 
 class VerifyCodeSerializer(serializers.Serializer):
     email = serializers.EmailField()
@@ -132,21 +170,30 @@ class VerifyCodeSerializer(serializers.Serializer):
 class LoginSerializer(serializers.Serializer):
     email = serializers.EmailField()
     password = serializers.CharField(write_only=True)
-    remember = serializers.BooleanField(default=False)
+    remember = serializers.BooleanField(default=False, required=False)
 
     def validate(self, data):
-        try:
-            user = User.objects.get(email=data['email'])
-        except User.DoesNotExist:
-            raise ValidationError({"email": "Пользователь с таким email не найден"})
+        email = data.get('email')
+        password = data.get('password')
 
-        if not user.check_password(data['password']):
-            raise ValidationError({"password": "Неверный пароль"})
+        if email and password:
+            user = authenticate(request=self.context.get('request'), username=email, password=password)
 
-        if not user.is_active:
-            raise ValidationError({"email": "Аккаунт не активирован. Проверьте почту"})
+            if not user:
+                try:
+                    user = User.objects.get(email=email)
+                    if not user.check_password(password):
+                        raise ValidationError("Неверный пароль.")
+                except User.DoesNotExist:
+                    raise ValidationError("Пользователь с таким email не найден.")
 
-        data['user'] = user
+            if not user.is_active:
+                raise ValidationError("Аккаунт не активирован. Проверьте почту.")
+
+            data['user'] = user
+        else:
+            raise ValidationError("Необходимо ввести email и пароль.")
+
         return data
 
 
