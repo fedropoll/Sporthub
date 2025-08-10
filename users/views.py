@@ -415,7 +415,7 @@ class JoinclubView(APIView):
             'errors': serializer.errors
         }, status=status.HTTP_400_BAD_REQUEST)
 
-stripe.api_key = "sk_test_51RtraO9OcwNpz5T4gdpVXRnB7HoHB5Cq7rnWEDMjNv8qb4vIlbQyhJrnHSKTtMnbTOJVOpfrohM6B7TwNdLGtyfY00fggb3hd9"  # Замените на ваш секретный ключ
+stripe.api_key = "here"  # Замените на ваш секретный ключ
 
 class PaymentView(APIView):
     permission_classes = [IsAuthenticated]
