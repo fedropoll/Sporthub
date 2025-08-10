@@ -12,7 +12,7 @@ from .views import (
     AttendanceView,
     UserProfileView,
 )
-from rest_framework_simplejwt.views import TokenRefreshView
+# from rest_framework_simplejwt.views import TokenRefreshView
 
 urlpatterns = [
     path('auth/register/', RegisterView.as_view(), name='register'),

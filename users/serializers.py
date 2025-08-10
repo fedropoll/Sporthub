@@ -194,9 +194,16 @@ class JoinclubSerializer(serializers.ModelSerializer):
         fields = ['id', 'user', 'schedule', 'registration_date', 'age_group']
 
 class PaymentSerializer(serializers.ModelSerializer):
+    stripe_payment_intent_id = serializers.CharField(max_length=50, required=False, allow_blank=True)
+
     class Meta:
         model = Payment
-        fields = ['id', 'joinclub', 'card_number', 'amount', 'payment_date']
+        fields = ['id', 'joinclub', 'stripe_payment_intent_id', 'amount', 'payment_date']
+
+    def validate_stripe_payment_intent_id(self, value):
+        if value and not isinstance(value, str):
+            raise serializers.ValidationError("Идентификатор транзакции должен быть строкой.")
+        return value
 
 class AttendanceSerializer(serializers.ModelSerializer):
     class Meta:

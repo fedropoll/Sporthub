@@ -8,6 +8,7 @@ from drf_yasg.utils import swagger_auto_schema
 from drf_yasg import openapi
 from .models import UserProfile, ClassSchedule, Joinclub, Attendance, Payment
 from .serializers import UserProfileSerializer, ClassScheduleSerializer, JoinclubSerializer, PaymentSerializer, AttendanceSerializer
+import stripe
 
 from .serializers import (
     RegisterSerializer,
@@ -25,7 +26,7 @@ from .utils import generate_and_send_code
 
 class RegisterView(APIView):
     @swagger_auto_schema(
-        tags=["Аутентификация"],
+        tags=["🔐Аутентификация"],
         operation_summary="Регистрация нового пользователя",
         operation_description="""
         Создаёт нового пользователя. После успешной регистрации на указанный адрес электронной почты
@@ -54,7 +55,7 @@ class RegisterView(APIView):
 
 class VerifyCodeView(APIView):
     @swagger_auto_schema(
-        tags=["Аутентификация"],
+        tags=["🔐Аутентификация"],
         operation_summary="Верификация аккаунта по коду",
         operation_description="""
         Активирует аккаунт пользователя, используя код, полученный на email.
@@ -95,7 +96,7 @@ class VerifyCodeView(APIView):
 
 class LoginView(APIView):
     @swagger_auto_schema(
-        tags=["Аутентификация"],
+        tags=["🔐Аутентификация"],
         operation_summary="Вход пользователя",
         operation_description="""
         Аутентифицирует пользователя по email и паролю. Возвращает JWT-токены
@@ -141,7 +142,7 @@ class LoginView(APIView):
 
 class ForgotPasswordView(APIView):
     @swagger_auto_schema(
-        tags=["Аутентификация"],
+        tags=["🔐Аутентификация"],
         operation_summary="Отправка кода для сброса пароля",
         operation_description="""
         Отправляет код для сброса пароля на email, если пользователь с таким
@@ -173,7 +174,7 @@ class ForgotPasswordView(APIView):
 
 class ResetPasswordView(APIView):
     @swagger_auto_schema(
-        tags=["Аутентификация"],
+        tags=["🔐Аутентификация"],
         operation_summary="Сброс пароля",
         operation_description="""
         Позволяет сбросить пароль пользователя, используя email, код верификации
@@ -202,7 +203,7 @@ class ResetPasswordView(APIView):
 
 class ResendCodeView(APIView):
     @swagger_auto_schema(
-        tags=["Аутентификация"],
+        tags=["🔐Аутентификация"],
         operation_summary="Повторная отправка кода верификации",
         operation_description="""
         Повторно отправляет код верификации на email пользователя. Может
@@ -245,7 +246,7 @@ class UserProfileView(APIView):
     permission_classes = [IsAuthenticated]
 
     @swagger_auto_schema(
-        tags=['Профиль пользователя'],
+        tags=['👤Профиль пользователя'],
         operation_summary="Получить данные профиля пользователя",
         operation_description="""
         Возвращает данные профиля (UserProfile) текущего аутентифицированного пользователя.
@@ -272,7 +273,7 @@ class UserProfileView(APIView):
             }, status=status.HTTP_404_NOT_FOUND)
 
     @swagger_auto_schema(
-        tags=['Профиль пользователя'],
+        tags=['👤Профиль пользователя'],
         operation_summary="Редактировать данные профиля пользователя",
         operation_description="""
         Обновляет данные профиля (UserProfile) текущего аутентифицированного пользователя.
@@ -311,7 +312,7 @@ class UserProfileView(APIView):
 class ClassScheduleView(APIView):
     permission_classes = [IsAuthenticated]
     @swagger_auto_schema(
-    tags=['Расписание'],
+    tags=['📅Расписание'],
     operation_summary="Получить список расписаний",
     operation_description="""
     Возвращает список всех доступных расписаний занятий. Требуется авторизация.
@@ -326,7 +327,7 @@ class ClassScheduleView(APIView):
         serializer = ClassScheduleSerializer(schedules, many=True)
         return Response({"success": True, "data": serializer.data}, status=status.HTTP_200_OK)
     @swagger_auto_schema(
-    tags=['Расписание'],
+    tags=['📅Расписание'],
     operation_summary="Создать новое расписание",
     operation_description="""
     Создаёт новую запись в расписании занятий. Требуется авторизация и,
@@ -350,7 +351,7 @@ class ClassScheduleView(APIView):
 class JoinclubView(APIView):
     permission_classes = [IsAuthenticated]
     @swagger_auto_schema(
-        tags=['Записаться на кружок'],
+        tags=['✅Записаться на кружок'],
         operation_summary="Получить список записей на кружки",
         operation_description="""
         Возвращает список всех кружков, на которые записан текущий аутентифицированный
@@ -379,7 +380,7 @@ class JoinclubView(APIView):
         }, status=status.HTTP_200_OK)
 
     @swagger_auto_schema(
-        tags=['Записаться на кружок'],
+        tags=['✅Записаться на кружок'],
         operation_summary="Создать новую запись на кружок",
         operation_description="""
         Позволяет текущему аутентифицированному пользователю записаться на
@@ -414,15 +415,15 @@ class JoinclubView(APIView):
             'errors': serializer.errors
         }, status=status.HTTP_400_BAD_REQUEST)
 
+stripe.api_key = "sk_test_51RtraO9OcwNpz5T4gdpVXRnB7HoHB5Cq7rnWEDMjNv8qb4vIlbQyhJrnHSKTtMnbTOJVOpfrohM6B7TwNdLGtyfY00fggb3hd9"  # Замените на ваш секретный ключ
+
 class PaymentView(APIView):
     permission_classes = [IsAuthenticated]
+
     @swagger_auto_schema(
-        tags=['Оплата'],
+        tags=['💳Оплата'],
         operation_summary="Получить список оплат для конкретной записи",
-        operation_description="""
-        Возвращает список всех оплат, связанных с конкретной записью на кружок (`joinclub`).
-        Требуется авторизация, и пользователь должен быть владельцем `joinclub`.
-        """,
+        operation_description="Возвращает список всех оплат, связанных с конкретной записью на кружок (`joinclub`). Требуется авторизация, и пользователь должен быть владельцем `joinclub`.",
         responses={
             200: openapi.Response('Список оплат', PaymentSerializer(many=True)),
             401: 'Не авторизован',
@@ -445,17 +446,20 @@ class PaymentView(APIView):
             }, status=status.HTTP_404_NOT_FOUND)
 
     @swagger_auto_schema(
-        tags=['Оплата'],
+        tags=['💳Оплата'],
         operation_summary="Создать новую оплату",
-        operation_description="""
-        Создаёт новую запись об оплате для конкретной записи на кружок (`joinclub`).
-        После создания оплаты обновляет статус оплаты (`payment_status`) и сумму
-        (`payment_amount`) в соответствующей записи `Joinclub`.
-        Требуется авторизация, и пользователь должен быть владельцем `joinclub`.
-        """,
-        request_body=PaymentSerializer,
+        operation_description="Создаёт новую запись об оплате для конкретной записи на кружок (`joinclub`). Использует Stripe для обработки платежа. Требуется авторизация, и пользователь должен быть владельцем `joinclub`.",
+        request_body=openapi.Schema(
+            type=openapi.TYPE_OBJECT,
+            required=['amount', 'stripe_token'],
+            properties={
+                'amount': openapi.Schema(type=openapi.TYPE_NUMBER, description='Сумма оплаты в валюте'),
+                'currency': openapi.Schema(type=openapi.TYPE_STRING, description='Валюта (по умолчанию USD)', default='usd'),
+                'stripe_token': openapi.Schema(type=openapi.TYPE_STRING, description='Токен карты от Stripe.js'),
+            }
+        ),
         responses={
-            201: openapi.Response('Оплата создана', PaymentSerializer),
+            201: openapi.Response('Оплата создана', examples={'application/json': {'success': True, 'message': 'Оплата успешно инициирована', 'data': {'id': 1, 'amount': '100.00'}, 'clientSecret': '...'}}),
             400: openapi.Response('Неверные данные', examples={'application/json': {'success': False, 'errors': {'amount': ['Это поле обязательно.']}}}),
             401: 'Не авторизован',
             404: openapi.Response('Запись Joinclub не найдена', examples={'application/json': {'success': False, 'message': 'Запись Joinclub не найдена'}})
@@ -464,16 +468,52 @@ class PaymentView(APIView):
     def post(self, request, joinclub_id):
         try:
             joinclub_instance = Joinclub.objects.get(id=joinclub_id, user=request.user.userprofile)
-            serializer = PaymentSerializer(data=request.data, context={'joinclub': joinclub_instance})
+            amount = request.data.get('amount')
+            currency = request.data.get('currency', 'usd')
+            stripe_token = request.data.get('stripe_token')
+
+            if not amount or not stripe_token:
+                return Response({
+                    'success': False,
+                    'errors': {'amount': ['Это поле обязательно'], 'stripe_token': ['Токен карты обязателен']}
+                }, status=status.HTTP_400_BAD_REQUEST)
+
+            # Создание платежного намерения через Stripe
+            intent = stripe.PaymentIntent.create(
+                amount=int(float(amount) * 100),  # Конвертация в центы
+                currency=currency,
+                # ИСПРАВЛЕННЫЙ КОД: использование payment_method_data
+                payment_method_data={
+                    "type": "card",
+                    "card": {
+                        "token": stripe_token
+                    }
+                },
+                confirmation_method='manual',
+                confirm=True,
+                description=f"Оплата за {joinclub_instance.schedule.title}"
+            )
+
+            # ---> отключаем автоматические платежные методы с редиректом <---
+            automatic_payment_methods = {
+                "enabled": True,
+                "allow_redirects": "never"
+            }
+
+            # Сохранение оплаты в базе
+            payment_data = {
+                'joinclub': joinclub_instance,
+                'amount': amount,
+                'stripe_payment_intent_id': intent.id  # Сохраняем ID платежного намерения
+            }
+            serializer = PaymentSerializer(data=payment_data)
             if serializer.is_valid():
-                payment = serializer.save(joinclub=joinclub_instance)
-                joinclub_instance.payment_status = True
-                joinclub_instance.payment_amount = payment.amount
-                joinclub_instance.save()
+                payment = serializer.save()
                 return Response({
                     'success': True,
-                    'message': 'Оплата успешно добавлена',
-                    'data': serializer.data
+                    'message': 'Оплата успешно инициирована',
+                    'data': serializer.data,
+                    'clientSecret': intent.client_secret
                 }, status=status.HTTP_201_CREATED)
             return Response({
                 'success': False,
@@ -484,11 +524,16 @@ class PaymentView(APIView):
                 'success': False,
                 'message': 'Запись Joinclub не найдена'
             }, status=status.HTTP_404_NOT_FOUND)
+        except stripe.error.StripeError as e:
+            return Response({
+                'success': False,
+                'errors': {'stripe': [str(e)]}
+            }, status=status.HTTP_400_BAD_REQUEST)
 
 class AttendanceView(APIView):
     permission_classes = [IsAuthenticated]
     @swagger_auto_schema(
-        tags=['Cписок посещаемости'],
+        tags=['📊Cписок посещаемости'],
         operation_summary="Получить список посещаемости и сводку",
         operation_description="""
         Возвращает список всех записей о посещаемости для конкретной записи на кружок (`joinclub`).

@@ -7,7 +7,7 @@ class UserProfile(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE)
     first_name = models.CharField(max_length=50, null=True, blank=True)
     last_name = models.CharField(max_length=50, null=True, blank=True)
-    phone_number = models.CharField(max_length=20, null=True, blank=True)
+    phone_number = models.IntegerField(max_length=20, null=True, blank=True)
     birth_date = models.DateField(null=True, blank=True)
     address = models.CharField(max_length=50, null=True, blank=True)
     gender = models.CharField(max_length=10,  choices=(('Мужской', 'Male'), ('Женский', 'Female')), null=True, blank=True)
@@ -60,7 +60,7 @@ class Joinclub(models.Model):
 
 class Payment(models.Model):
     joinclub = models.OneToOneField(Joinclub, on_delete=models.CASCADE)
-    card_number = models.CharField(max_length=16)
+    stripe_payment_intent_id = models.CharField(max_length=50, null=True, blank=True)  # Идентификатор от Stripe
     amount = models.DecimalField(max_digits=6, decimal_places=2)
     payment_date = models.DateTimeField(auto_now_add=True)
 
