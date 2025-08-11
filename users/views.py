@@ -9,6 +9,12 @@ from drf_yasg import openapi
 from .models import UserProfile, ClassSchedule, Joinclub, Attendance, Payment
 from .serializers import UserProfileSerializer, ClassScheduleSerializer, JoinclubSerializer, PaymentSerializer, AttendanceSerializer
 import stripe
+import logging
+
+logging.basicConfig(level=logging.DEBUG)
+logger = logging.getLogger(__name__)
+
+stripe.api_key = "sk_test_51RtraO9OcwNpz5T4gdpVXRnB7HoHB5Cq7rnWEDMjNv8qb4vIlbQyhJrnHSKTtMnbTOJVOpfrohM6B7TwNdLGtyfY00fggb3hd9"  # Замените на ваш секретный ключ
 
 from .serializers import (
     RegisterSerializer,
@@ -415,7 +421,8 @@ class JoinclubView(APIView):
             'errors': serializer.errors
         }, status=status.HTTP_400_BAD_REQUEST)
 
-stripe.api_key = "here"  # Замените на ваш секретный ключ
+
+
 
 class PaymentView(APIView):
     permission_classes = [IsAuthenticated]
@@ -466,6 +473,7 @@ class PaymentView(APIView):
         }
     )
     def post(self, request, joinclub_id):
+        logger.debug("Received data: %s", request.data)
         try:
             joinclub_instance = Joinclub.objects.get(id=joinclub_id, user=request.user.userprofile)
             amount = request.data.get('amount')
@@ -478,11 +486,24 @@ class PaymentView(APIView):
                     'errors': {'amount': ['Это поле обязательно'], 'stripe_token': ['Токен карты обязателен']}
                 }, status=status.HTTP_400_BAD_REQUEST)
 
+            # Валидация суммы
+            try:
+                amount_float = float(amount)
+                if amount_float <= 0:
+                    return Response({
+                        'success': False,
+                        'errors': {'amount': ['Сумма должна быть положительной']}
+                    }, status=status.HTTP_400_BAD_REQUEST)
+            except (ValueError, TypeError):
+                return Response({
+                    'success': False,
+                    'errors': {'amount': ['Сумма должна быть числом']}
+                }, status=status.HTTP_400_BAD_REQUEST)
+
             # Создание платежного намерения через Stripe
             intent = stripe.PaymentIntent.create(
-                amount=int(float(amount) * 100),  # Конвертация в центы
+                amount=int(amount_float * 100),  # Конвертация в центы
                 currency=currency,
-                # ИСПРАВЛЕННЫЙ КОД: использование payment_method_data
                 payment_method_data={
                     "type": "card",
                     "card": {
@@ -491,43 +512,51 @@ class PaymentView(APIView):
                 },
                 confirmation_method='manual',
                 confirm=True,
-                description=f"Оплата за {joinclub_instance.schedule.title}"
+                description=f"Оплата за {joinclub_instance.schedule.title}",
+                return_url="http://127.0.0.1:8000/swagger/"
             )
 
-            # ---> отключаем автоматические платежные методы с редиректом <---
-            automatic_payment_methods = {
-                "enabled": True,
-                "allow_redirects": "never"
-            }
-
-            # Сохранение оплаты в базе
-            payment_data = {
-                'joinclub': joinclub_instance,
-                'amount': amount,
-                'stripe_payment_intent_id': intent.id  # Сохраняем ID платежного намерения
-            }
-            serializer = PaymentSerializer(data=payment_data)
-            if serializer.is_valid():
-                payment = serializer.save()
+            # Проверка статуса платежа
+            if intent.status == 'succeeded':
+                payment_data = {
+                    'joinclub': joinclub_id,  # Передаем ID вместо объекта
+                    'amount': amount_float,
+                    'stripe_payment_intent_id': intent.id
+                }
+                serializer = PaymentSerializer(data=payment_data)
+                if serializer.is_valid():
+                    payment = serializer.save()
+                    return Response({
+                        'success': True,
+                        'message': 'Оплата успешно завершена',
+                        'data': serializer.data,
+                        'clientSecret': intent.client_secret
+                    }, status=status.HTTP_201_CREATED)
                 return Response({
-                    'success': True,
-                    'message': 'Оплата успешно инициирована',
-                    'data': serializer.data,
-                    'clientSecret': intent.client_secret
-                }, status=status.HTTP_201_CREATED)
-            return Response({
-                'success': False,
-                'errors': serializer.errors
-            }, status=status.HTTP_400_BAD_REQUEST)
+                    'success': False,
+                    'errors': serializer.errors
+                }, status=status.HTTP_400_BAD_REQUEST)
+            else:
+                return Response({
+                    'success': False,
+                    'message': f'Платеж не завершен. Статус: {intent.status}. Попробуйте еще раз.'
+                }, status=status.HTTP_400_BAD_REQUEST)
         except Joinclub.DoesNotExist:
             return Response({
                 'success': False,
                 'message': 'Запись Joinclub не найдена'
             }, status=status.HTTP_404_NOT_FOUND)
         except stripe.error.StripeError as e:
+            logger.error("Stripe error: %s", str(e))
             return Response({
                 'success': False,
                 'errors': {'stripe': [str(e)]}
+            }, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            logger.error("Unexpected error: %s", str(e))
+            return Response({
+                'success': False,
+                'errors': {'general': ['Произошла ошибка на сервере']}
             }, status=status.HTTP_400_BAD_REQUEST)
 
 class AttendanceView(APIView):
