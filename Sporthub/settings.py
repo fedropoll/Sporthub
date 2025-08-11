@@ -34,7 +34,6 @@ INSTALLED_APPS = [
     'rest_framework_simplejwt',
 
     # My apps
-    'users',
     'users.apps.UsersConfig',
 ]
 

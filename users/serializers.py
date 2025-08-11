@@ -136,7 +136,7 @@ class PasswordChangeSerializer(serializers.Serializer):
         user.save()
 
 
-class VerifyCodeSerializer(serializers.ializer):
+class VerifyCodeSerializer(serializers.Serializer):
     """Сериализатор для верификации кода."""
     email = serializers.EmailField()
     code = serializers.CharField(max_length=4, min_length=4)

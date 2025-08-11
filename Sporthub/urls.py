@@ -3,7 +3,9 @@ from django.urls import path, include
 from drf_yasg.views import get_schema_view
 from drf_yasg import openapi
 from rest_framework.permissions import AllowAny
-
+from rest_framework_simplejwt.views import (
+    TokenObtainPairView,
+)
 schema_view = get_schema_view(
     openapi.Info(
         title="Sporthub API",
