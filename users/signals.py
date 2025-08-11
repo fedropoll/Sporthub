@@ -12,9 +12,11 @@ def create_review_notification(sender, instance, created, **kwargs):
             message=message,
             type='review'
         )
+from .models import UserProfile
 
 @receiver(post_save, sender=User)
 def create_registration_notification(sender, instance, created, **kwargs):
+def create_user_profile(sender, instance, created, **kwargs):
     if created:
         message = f"Новый пользователь {instance.username} зарегистрировался."
         Notification.objects.create(
@@ -22,3 +24,4 @@ def create_registration_notification(sender, instance, created, **kwargs):
             message=message,
             type='registration'
         )
+        UserProfile.objects.get_or_create(user=instance)

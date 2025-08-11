@@ -3,7 +3,9 @@ from django.contrib.auth.models import User
 from rest_framework.exceptions import ValidationError
 from django.contrib.auth import authenticate
 from .models import UserProfile, PasswordResetCode, Ad, Hall, Club, Trainer, Review, Notification
+from .models import UserProfile, PasswordResetCode, ClassSchedule, Joinclub, Payment, Attendance
 from .utils import generate_and_send_code
+from rest_framework.exceptions import ValidationError
 
 
 class UserSerializer(serializers.ModelSerializer):
@@ -54,6 +56,14 @@ class RegisterSerializer(serializers.Serializer):
         default=False,
         help_text="Запомнить меня на этом устройстве?"
     )
+    email = serializers.EmailField()
+    password = serializers.CharField(write_only=True, min_length=8)
+    confirmPassword = serializers.CharField(write_only=True)
+    firstName = serializers.CharField(max_length=30)
+    lastName = serializers.CharField(max_length=30)
+    phone_number = serializers.CharField(max_length=20)
+    birth_date = serializers.DateField()
+    remember = serializers.BooleanField(default=False)
 
     def validate(self, data):
         if data['password'] != data['confirmPassword']:
@@ -61,6 +71,7 @@ class RegisterSerializer(serializers.Serializer):
 
         if User.objects.filter(email=data['email']).exists():
             raise ValidationError({"email": "Пользователь с таким email уже существует"})
+
         if User.objects.filter(username=data['email']).exists():
             raise ValidationError({"email": "Пользователь с таким email уже существует"})
 
@@ -82,6 +93,7 @@ class RegisterSerializer(serializers.Serializer):
             birth_date=validated_data['birth_date'],
             gender=validated_data.get('gender', ''),
             address=validated_data.get('address', '')
+            birth_date=validated_data['birth_date']
         )
 
         generate_and_send_code(user)
@@ -170,9 +182,17 @@ class VerifyCodeSerializer(serializers.Serializer):
 class LoginSerializer(serializers.Serializer):
     email = serializers.EmailField()
     password = serializers.CharField(write_only=True)
+    remember = serializers.BooleanField(default=False)
     remember = serializers.BooleanField(default=False, required=False)
 
     def validate(self, data):
+        try:
+            user = User.objects.get(email=data['email'])
+        except User.DoesNotExist:
+            raise ValidationError({"email": "Пользователь с таким email не найден"})
+
+        if not user.check_password(data['password']):
+            raise ValidationError({"password": "Неверный пароль"})
         email = data.get('email')
         password = data.get('password')
 
@@ -187,9 +207,12 @@ class LoginSerializer(serializers.Serializer):
                 except User.DoesNotExist:
                     raise ValidationError("Пользователь с таким email не найден.")
 
+        if not user.is_active:
+            raise ValidationError({"email": "Аккаунт не активирован. Проверьте почту"})
             if not user.is_active:
                 raise ValidationError("Аккаунт не активирован. Проверьте почту.")
 
+        data['user'] = user
             data['user'] = user
         else:
             raise ValidationError("Необходимо ввести email и пароль.")
@@ -255,6 +278,10 @@ class ResetPasswordSerializer(serializers.Serializer):
 
         return user
 
+class UserProfileSerializer(serializers.ModelSerializer):
+    email = serializers.EmailField(source='user.email', read_only=True)
+    first_name = serializers.CharField(source='user.first_name', required=False)
+    last_name = serializers.CharField(source='user.last_name', required=False)
 
 class AdSerializer(serializers.ModelSerializer):
     class Meta:
@@ -284,27 +311,57 @@ class AdSerializer(serializers.ModelSerializer):
 
 class HallSerializer(serializers.ModelSerializer):
     class Meta:
+        model = UserProfile
+        fields = ['id', 'first_name', 'last_name', 'phone_number', 'birth_date', 'address', 'gender', 'email']
+
+    def update(self, instance, validated_data):
+        user_data = validated_data.pop('user', {})
+        instance.phone_number = validated_data.get('phone_number', instance.phone_number)
+        instance.birth_date = validated_data.get('birth_date', instance.birth_date)
+        instance.address = validated_data.get('address', instance.address)
+        instance.gender = validated_data.get('gender', instance.gender)
+        instance.save()
         model = Hall
         fields = '__all__'
 
+        user = instance.user
+        user.first_name = user_data.get('first_name', user.first_name)
+        user.last_name = user_data.get('last_name', user.last_name)
+        user.save()
 
+        return instance
+
+class ClassScheduleSerializer(serializers.ModelSerializer):
 class ClubSerializer(serializers.ModelSerializer):
     class Meta:
+        model = ClassSchedule
+        fields = ['id', 'title', 'day_of_week', 'start_time', 'end_time',]
         model = Club
         fields = '__all__'
 
+class JoinclubSerializer(serializers.ModelSerializer):
 
 class TrainerSerializer(serializers.ModelSerializer):
     class Meta:
+        model = Joinclub
+        fields = ['id', 'user', 'schedule', 'registration_date', 'age_group']
         model = Trainer
         fields = '__all__'
 
+class PaymentSerializer(serializers.ModelSerializer):
+    stripe_payment_intent_id = serializers.CharField(max_length=50, required=False, allow_blank=True)
 
 class TrainerNameSerializer(serializers.ModelSerializer):
     class Meta:
+        model = Payment
+        fields = ['id', 'joinclub', 'stripe_payment_intent_id', 'amount', 'payment_date']
         model = Trainer
         fields = ['first_name', 'last_name']
 
+    def validate_stripe_payment_intent_id(self, value):
+        if value and not isinstance(value, str):
+            raise serializers.ValidationError("Идентификатор транзакции должен быть строкой.")
+        return value
 
 class ClientDetailSerializer(serializers.ModelSerializer):
     user = serializers.CharField(source='user.username', read_only=True)
@@ -312,7 +369,14 @@ class ClientDetailSerializer(serializers.ModelSerializer):
     last_name = serializers.CharField(source='user.last_name', read_only=True)
     trainer = TrainerNameSerializer(read_only=True)
 
+class AttendanceSerializer(serializers.ModelSerializer):
     class Meta:
+        model = Attendance
+        fields = ['id', 'joinclub', 'attendance_date', 'is_present', 'notes']
+
+    def create(self, validated_data):
+        joinclub = self.context.get('joinclub')
+        return Attendance.objects.create(joinclub=joinclub, **validated_data)
         model = UserProfile
         fields = ['user', 'first_name', 'last_name', 'trainer', 'sport', 'has_paid']
 
