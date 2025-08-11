@@ -1,20 +1,30 @@
 from rest_framework import serializers
-from django.contrib.auth.models import User
-from rest_framework.exceptions import ValidationError
+from django.contrib.auth import get_user_model
 from django.contrib.auth import authenticate
+from rest_framework.exceptions import ValidationError
 from .models import (
     UserProfile, PasswordResetCode, Ad, Hall, Club, Trainer,
     Review, Notification, ClassSchedule, Joinclub, Payment, Attendance
 )
 from .utils import generate_and_send_code
 
+# Получаем модель пользователя Django
+User = get_user_model()
+
 
 class UserSerializer(serializers.ModelSerializer):
     """Сериализатор для модели User."""
+
     class Meta:
         model = User
         fields = ['id', 'username', 'email', 'first_name', 'last_name']
         read_only_fields = ['id', 'username']
+
+
+class UserShortSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = ['id', 'username', 'first_name', 'last_name', 'email']
 
 
 class RegisterSerializer(serializers.Serializer):
@@ -146,6 +156,7 @@ class VerifyCodeSerializer(serializers.Serializer):
             user = User.objects.get(email=data['email'])
         except User.DoesNotExist:
             raise ValidationError({"email": "Пользователь не найден"})
+
         try:
             reset_code = PasswordResetCode.objects.filter(
                 user=user,
@@ -156,6 +167,7 @@ class VerifyCodeSerializer(serializers.Serializer):
 
         if reset_code.code != data['code']:
             raise ValidationError({"code": "Неверный код"})
+
         if reset_code.is_expired():
             raise ValidationError({"code": "Код истек. Запросите новый"})
 
@@ -203,12 +215,8 @@ class ForgotPasswordSerializer(serializers.Serializer):
     email = serializers.EmailField()
 
     def validate_email(self, value):
-        try:
-            user = User.objects.get(email=value)
-            if not user.is_active:
-                raise ValidationError("Аккаунт не активирован")
-        except User.DoesNotExist:
-            raise ValidationError("Пользователь с таким email не найден")
+        if not User.objects.filter(email=value).exists():
+            raise ValidationError("Пользователь с таким email не найден.")
         return value
 
 
@@ -216,12 +224,17 @@ class ResetPasswordSerializer(serializers.Serializer):
     """Сериализатор для сброса пароля."""
     email = serializers.EmailField()
     code = serializers.CharField(max_length=4, min_length=4)
-    password = serializers.CharField(write_only=True, min_length=8)
-    confirmPassword = serializers.CharField(write_only=True)
+    new_password = serializers.CharField(write_only=True, min_length=8)
+    confirm_new_password = serializers.CharField(write_only=True, min_length=8)
 
     def validate(self, data):
-        if data['password'] != data['confirmPassword']:
-            raise ValidationError({"confirmPassword": "Пароли не совпадают"})
+        if data['new_password'] != data['confirm_new_password']:
+            raise ValidationError({"confirm_new_password": "Пароли не совпадают"})
+
+        # Этот блок кода дублируется и вызывает ошибку.
+        # if data['password'] != data['confirmPassword']:
+        #     raise ValidationError({"confirmPassword": "Пароли не совпадают"})
+
         try:
             user = User.objects.get(email=data['email'])
         except User.DoesNotExist:
@@ -246,7 +259,8 @@ class ResetPasswordSerializer(serializers.Serializer):
         user = self.validated_data['user']
         reset_code = self.validated_data['reset_code']
 
-        user.set_password(self.validated_data['password'])
+        # В этом месте нужно использовать new_password
+        user.set_password(self.validated_data['new_password'])
         user.save()
 
         reset_code.is_used = True
@@ -257,6 +271,7 @@ class ResetPasswordSerializer(serializers.Serializer):
 
 class AdSerializer(serializers.ModelSerializer):
     """Сериализатор для модели Ad."""
+
     class Meta:
         model = Ad
         fields = '__all__'
@@ -264,6 +279,7 @@ class AdSerializer(serializers.ModelSerializer):
 
 class HallSerializer(serializers.ModelSerializer):
     """Сериализатор для модели Hall."""
+
     class Meta:
         model = Hall
         fields = '__all__'
@@ -271,6 +287,7 @@ class HallSerializer(serializers.ModelSerializer):
 
 class ClassScheduleSerializer(serializers.ModelSerializer):
     """Сериализатор для модели ClassSchedule."""
+
     class Meta:
         model = ClassSchedule
         fields = ['id', 'title', 'day_of_week', 'start_time', 'end_time']
@@ -278,6 +295,7 @@ class ClassScheduleSerializer(serializers.ModelSerializer):
 
 class ClubSerializer(serializers.ModelSerializer):
     """Сериализатор для модели Club."""
+
     class Meta:
         model = Club
         fields = '__all__'
@@ -285,6 +303,7 @@ class ClubSerializer(serializers.ModelSerializer):
 
 class JoinclubSerializer(serializers.ModelSerializer):
     """Сериализатор для модели Joinclub."""
+
     class Meta:
         model = Joinclub
         fields = ['id', 'user', 'schedule', 'registration_date', 'age_group']
@@ -292,6 +311,7 @@ class JoinclubSerializer(serializers.ModelSerializer):
 
 class TrainerSerializer(serializers.ModelSerializer):
     """Сериализатор для модели Trainer."""
+
     class Meta:
         model = Trainer
         fields = '__all__'
@@ -299,6 +319,7 @@ class TrainerSerializer(serializers.ModelSerializer):
 
 class TrainerNameSerializer(serializers.ModelSerializer):
     """Сериализатор для вывода имени тренера."""
+
     class Meta:
         model = Trainer
         fields = ['first_name', 'last_name']
@@ -327,6 +348,7 @@ class ClientDetailSerializer(serializers.ModelSerializer):
 
 class AttendanceSerializer(serializers.ModelSerializer):
     """Сериализатор для модели Attendance."""
+
     class Meta:
         model = Attendance
         fields = ['id', 'joinclub', 'attendance_date', 'is_present', 'notes']
