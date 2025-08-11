@@ -1,9 +1,13 @@
+from django.db.models import Avg, Count
 from rest_framework import viewsets, status
 from rest_framework.permissions import IsAuthenticatedOrReadOnly, AllowAny
 from rest_framework.response import Response
 from rest_framework.decorators import action
 from drf_yasg.utils import swagger_auto_schema
 from drf_yasg import openapi
+from django_filters.rest_framework import DjangoFilterBackend
+from rest_framework import filters
+
 from .models import Hall, Club, Review
 from .serializers import (
     HallSerializer, ClubSerializer, ReviewSerializer,
@@ -13,11 +17,14 @@ from .permissions import IsAuthorOrReadOnly
 
 
 class HallViewSet(viewsets.ReadOnlyModelViewSet):
-    """
-    API для управления баскетбольными залами.
-    """
-    queryset = Hall.objects.all()
-    permission_classes = [AllowAny]  # Разрешение для всех (публичный доступ)
+    queryset = Hall.objects.all().annotate(
+        average_rating=Avg('reviews__rating'),
+        review_count=Count('reviews')
+    )
+    permission_classes = [AllowAny]
+    filter_backends = [DjangoFilterBackend, filters.SearchFilter]
+    filterset_fields = ['hall_type', 'coating', 'dressing_room', 'shower', 'lighting']
+    search_fields = ['name', 'address', 'inventory']
 
     def get_serializer_class(self):
         if self.action == 'retrieve':
@@ -25,28 +32,31 @@ class HallViewSet(viewsets.ReadOnlyModelViewSet):
         return HallSerializer
 
     @swagger_auto_schema(
-        tags=['🏟️ Баскетбольные залы'],
+        tags=['🏟️ Залы'],
         operation_summary='Получить список залов',
-        operation_description='Возвращает краткий список всех баскетбольных залов. Содержит основную информацию о каждом зале, такую как название, адрес и рейтинг. Идеально подходит для отображения на главной странице.',
-        responses={200: HallSerializer(many=True)}
+        operation_description='Возвращает краткий список всех залов с возможностью фильтрации и поиска.',
+        manual_parameters=[
+            openapi.Parameter('hall_type', openapi.IN_QUERY, type=openapi.TYPE_STRING, description='Тип зала (indoor, outdoor, mixed)'),
+            openapi.Parameter('coating', openapi.IN_QUERY, type=openapi.TYPE_STRING, description='Покрытие'),
+            openapi.Parameter('dressing_room', openapi.IN_QUERY, type=openapi.TYPE_BOOLEAN, description='Наличие раздевалки'),
+            openapi.Parameter('shower', openapi.IN_QUERY, type=openapi.TYPE_BOOLEAN, description='Наличие душа'),
+            openapi.Parameter('lighting', openapi.IN_QUERY, type=openapi.TYPE_BOOLEAN, description='Наличие освещения'),
+            openapi.Parameter('search', openapi.IN_QUERY, type=openapi.TYPE_STRING, description='Поиск по названию, адресу, инвентарю')
+        ]
     )
     def list(self, request, *args, **kwargs):
         return super().list(request, *args, **kwargs)
 
     @swagger_auto_schema(
-        tags=['🏟️ Баскетбольные залы'],
+        tags=['🏟️ Залы'],
         operation_summary='Получить детали зала',
-        operation_description='Возвращает полную информацию о конкретном баскетбольном зале по его ID. Включает в себя подробные данные, такие как часы работы, инвентарь, цены и список всех отзывов.',
-        responses={200: HallDetailSerializer()}
     )
     def retrieve(self, request, *args, **kwargs):
         return super().retrieve(request, *args, **kwargs)
 
     @swagger_auto_schema(
-        tags=['🏟️ Баскетбольные залы'],
+        tags=['🏟️ Залы'],
         operation_summary='Получить отзывы зала',
-        operation_description='Возвращает список всех отзывов, оставленных для конкретного зала. Полезно для отображения секции с отзывами на странице деталей зала.',
-        responses={200: ReviewSerializer(many=True)}
     )
     @action(detail=True, methods=['get'])
     def reviews(self, request, pk=None):
@@ -57,11 +67,14 @@ class HallViewSet(viewsets.ReadOnlyModelViewSet):
 
 
 class ClubViewSet(viewsets.ReadOnlyModelViewSet):
-    """
-    API для управления баскетбольными клубами.
-    """
-    queryset = Club.objects.all()
-    permission_classes = []  # Разрешение для всех (публичный доступ)
+    queryset = Club.objects.all().annotate(
+        average_rating=Avg('reviews__rating'),
+        review_count=Count('reviews')
+    )
+    permission_classes = [AllowAny]
+    filter_backends = [DjangoFilterBackend, filters.SearchFilter]
+    filterset_fields = ['hall']
+    search_fields = ['name', 'description', 'coach']
 
     def get_serializer_class(self):
         if self.action == 'retrieve':
@@ -69,28 +82,27 @@ class ClubViewSet(viewsets.ReadOnlyModelViewSet):
         return ClubSerializer
 
     @swagger_auto_schema(
-        tags=['🏀 Баскетбольные клубы'],
+        tags=['🏀Клубы'],
         operation_summary='Получить список клубов',
-        operation_description='Возвращает краткий список всех баскетбольных клубов. Показывает основную информацию: название, описание, тренера и рейтинг. Подходит для общего списка клубов.',
-        responses={200: ClubSerializer(many=True)}
+        operation_description='Возвращает краткий список всех баскетбольных клубов. Можно фильтровать по `hall_id` и искать по `name`, `description`, `coach`.',
+        manual_parameters=[
+            openapi.Parameter('hall', openapi.IN_QUERY, type=openapi.TYPE_INTEGER, description='ID зала, где находится клуб'),
+            openapi.Parameter('search', openapi.IN_QUERY, type=openapi.TYPE_STRING, description='Поиск по названию, описанию, тренеру')
+        ]
     )
     def list(self, request, *args, **kwargs):
         return super().list(request, *args, **kwargs)
 
     @swagger_auto_schema(
-        tags=['🏀 Баскетбольные клубы'],
+        tags=['🏀Клубы'],
         operation_summary='Получить детали клуба',
-        operation_description='Возвращает полную информацию о конкретном клубе по его ID. Включает расписание, возрастные группы, цену и все отзывы, связанные с клубом.',
-        responses={200: ClubDetailSerializer()}
     )
     def retrieve(self, request, *args, **kwargs):
         return super().retrieve(request, *args, **kwargs)
 
     @swagger_auto_schema(
-        tags=['🏀 Баскетбольные клубы'],
+        tags=['🏀Клубы'],
         operation_summary='Получить отзывы клуба',
-        operation_description='Возвращает список всех отзывов, оставленных для конкретного клуба. Идеально для секции отзывов на странице клуба.',
-        responses={200: ReviewSerializer(many=True)}
     )
     @action(detail=True, methods=['get'])
     def reviews(self, request, pk=None):
@@ -101,9 +113,6 @@ class ClubViewSet(viewsets.ReadOnlyModelViewSet):
 
 
 class ReviewViewSet(viewsets.ModelViewSet):
-    """
-    API для управления отзывами.
-    """
     serializer_class = ReviewSerializer
     permission_classes = [IsAuthenticatedOrReadOnly, IsAuthorOrReadOnly]
 
@@ -122,14 +131,12 @@ class ReviewViewSet(viewsets.ModelViewSet):
     @swagger_auto_schema(
         tags=['📝 Отзывы'],
         operation_summary='Получить список отзывов',
-        operation_description='Возвращает список всех отзывов. Можно фильтровать отзывы по `hall_id` (ID зала) или `club_id` (ID клуба), передав их в качестве query-параметров. Например, `/reviews/?hall_id=1`.',
         manual_parameters=[
             openapi.Parameter('hall_id', openapi.IN_QUERY, type=openapi.TYPE_INTEGER,
                               description='ID зала для фильтрации отзывов'),
             openapi.Parameter('club_id', openapi.IN_QUERY, type=openapi.TYPE_INTEGER,
                               description='ID клуба для фильтрации отзывов')
         ],
-        responses={200: ReviewSerializer(many=True)}
     )
     def list(self, request, *args, **kwargs):
         return super().list(request, *args, **kwargs)
@@ -137,9 +144,6 @@ class ReviewViewSet(viewsets.ModelViewSet):
     @swagger_auto_schema(
         tags=['📝 Отзывы'],
         operation_summary='Оставить новый отзыв',
-        operation_description='Создает новый отзыв для зала или клуба. **Требуется авторизация.** В теле запроса нужно указать `hall` или `club`, `rating` и `text`.',
-        request_body=ReviewSerializer,
-        responses={201: ReviewSerializer(), 401: 'Не авторизован', 400: 'Неверные данные'}
     )
     def create(self, request, *args, **kwargs):
         return super().create(request, *args, **kwargs)
@@ -147,8 +151,6 @@ class ReviewViewSet(viewsets.ModelViewSet):
     @swagger_auto_schema(
         tags=['📝 Отзывы'],
         operation_summary='Получить детали отзыва',
-        operation_description='Возвращает полную информацию о конкретном отзыве по его ID.',
-        responses={200: ReviewSerializer(), 404: 'Отзыв не найден'}
     )
     def retrieve(self, request, *args, **kwargs):
         return super().retrieve(request, *args, **kwargs)
@@ -156,9 +158,6 @@ class ReviewViewSet(viewsets.ModelViewSet):
     @swagger_auto_schema(
         tags=['📝 Отзывы'],
         operation_summary='Обновить отзыв (PUT)',
-        operation_description='Полностью обновляет существующий отзыв по его ID. **Доступно только автору отзыва.**',
-        request_body=ReviewSerializer,
-        responses={200: ReviewSerializer(), 401: 'Не авторизован', 403: 'Доступ запрещен', 404: 'Отзыв не найден'}
     )
     def update(self, request, *args, **kwargs):
         return super().update(request, *args, **kwargs)
@@ -166,9 +165,6 @@ class ReviewViewSet(viewsets.ModelViewSet):
     @swagger_auto_schema(
         tags=['📝 Отзывы'],
         operation_summary='Частично обновить отзыв (PATCH)',
-        operation_description='Частично обновляет существующий отзыв по его ID. Можно изменить только некоторые поля. **Доступно только автору отзыва.**',
-        request_body=ReviewSerializer,
-        responses={200: ReviewSerializer(), 401: 'Не авторизован', 403: 'Доступ запрещен', 404: 'Отзыв не найден'}
     )
     def partial_update(self, request, *args, **kwargs):
         return super().partial_update(request, *args, **kwargs)
@@ -176,8 +172,6 @@ class ReviewViewSet(viewsets.ModelViewSet):
     @swagger_auto_schema(
         tags=['📝 Отзывы'],
         operation_summary='Удалить отзыв',
-        operation_description='Удаляет отзыв по его ID. **Доступно только автору отзыва.**',
-        responses={204: 'Успешно удалено', 401: 'Не авторизован', 403: 'Доступ запрещен', 404: 'Отзыв не найден'}
     )
     def destroy(self, request, *args, **kwargs):
         return super().destroy(request, *args, **kwargs)

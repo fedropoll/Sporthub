@@ -1,6 +1,5 @@
 from rest_framework import serializers
 from .models import Hall, Club, Review
-from users.serializers import UserShortSerializer
 
 class HallSerializer(serializers.ModelSerializer):
     average_rating = serializers.FloatField(read_only=True)
@@ -34,8 +33,6 @@ class ClubSerializer(serializers.ModelSerializer):
         }
 
 class ReviewSerializer(serializers.ModelSerializer):
-    author = UserShortSerializer(read_only=True)
-
     class Meta:
         model = Review
         fields = [
@@ -43,7 +40,6 @@ class ReviewSerializer(serializers.ModelSerializer):
             'created_at', 'updated_at'
         ]
         read_only_fields = ['author', 'created_at', 'updated_at']
-        ref_name = 'Review'
 
     def validate(self, data):
         if not data.get('hall') and not data.get('club'):
