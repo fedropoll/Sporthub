@@ -984,6 +984,36 @@ class JoinclubView(APIView):
 
     @swagger_auto_schema(
         tags=['🎉 Записи на занятия'],
+        operation_summary="Получить список записей на кружки",
+        operation_description="""
+           Возвращает список всех кружков, на которые записан текущий аутентифицированный
+           пользователь. Требуется авторизация.
+           """,
+        responses={
+            200: openapi.Response('Список записей', JoinclubSerializer(many=True)),
+            401: 'Не авторизован',
+            404: openapi.Response('Записи не найдены или профиль отсутствует', examples={
+                'application/json': {'success': False, 'message': 'Профиль пользователя не найден'}})
+        }
+    )
+    def get(self, request):
+        try:
+            user_profile = request.user.userprofile
+        except UserProfile.DoesNotExist:
+            return Response({
+                'success': False,
+                'message': 'Профиль пользователя не найден'
+            }, status=status.HTTP_404_NOT_FOUND)
+
+        joinclubs = Joinclub.objects.filter(user=user_profile)
+        serializer = JoinclubSerializer(joinclubs, many=True)
+        return Response({
+            'success': True,
+            'data': serializer.data
+        }, status=status.HTTP_200_OK)
+
+    @swagger_auto_schema(
+        tags=['🎉 Записи на занятия'],
         operation_summary="Записаться на занятие",
         operation_description="""
         Записывает текущего пользователя на выбранное занятие. Требуется авторизация.
@@ -1026,56 +1056,141 @@ class PaymentView(APIView):
 
     @swagger_auto_schema(
         tags=['💳 Оплата'],
-        operation_summary="Провести оплату",
-        operation_description="""
-        Создаёт платёжный намерение через Stripe и возвращает `client_secret`.
-        После успешной оплаты создаётся запись об оплате.
-        """,
+        operation_summary="Получить список оплат для конкретной записи",
+        operation_description="Возвращает список всех оплат, связанных с конкретной записью на кружок (joinclub). Требуется авторизация, и пользователь должен быть владельцем joinclub.",
+        responses={
+            200: openapi.Response('Список оплат', PaymentSerializer(many=True)),
+            401: 'Не авторизован',
+            404: openapi.Response('Joinclub не найден',
+                                  examples={'application/json': {'success': False, 'message': 'Joinclub не найден'}})
+        }
+    )
+
+    def get(self, request, joinclub_id):
+        try:
+            joinclub_instance = Joinclub.objects.get(id=joinclub_id, user=request.user.userprofile)
+            payments = Payment.objects.filter(joinclub=joinclub_instance)
+            serializer = PaymentSerializer(payments, many=True)
+            return Response({
+                'success': True,
+                'data': serializer.data
+            }, status=status.HTTP_200_OK)
+        except Joinclub.DoesNotExist:
+            return Response({
+                'success': False,
+                'message': 'Joinclub не найден'
+            }, status=status.HTTP_404_NOT_FOUND)
+
+    @swagger_auto_schema(
+        tags=['💳 Оплата'],
+        operation_summary="Создать новую оплату",
+        operation_description="Создаёт новую запись об оплате для конкретной записи на кружок (joinclub). Использует Stripe для обработки платежа. Требуется авторизация, и пользователь должен быть владельцем joinclub.",
         request_body=openapi.Schema(
             type=openapi.TYPE_OBJECT,
-            required=['amount', 'payment_method_id'],
+            required=['amount', 'stripe_token'],
             properties={
-                'amount': openapi.Schema(type=openapi.TYPE_NUMBER, description='Сумма оплаты'),
-                'payment_method_id': openapi.Schema(type=openapi.TYPE_STRING,
-                                                    description='ID платежного метода Stripe'),
+                'amount': openapi.Schema(type=openapi.TYPE_NUMBER, description='Сумма оплаты в валюте'),
+                'currency': openapi.Schema(type=openapi.TYPE_STRING, description='Валюта (по умолчанию USD)',
+                                           default='usd'),
+                'stripe_token': openapi.Schema(type=openapi.TYPE_STRING, description='Токен карты от Stripe.js'),
             }
         ),
         responses={
-            200: openapi.Response('Оплата успешна', examples={
-                'application/json': {'success': True, 'message': 'Оплата прошла успешно', 'payment_intent_id': 'pi_...'}
-                }),
-            400: 'Неверные данные',
+            201: openapi.Response('Оплата создана', examples={
+                'application/json': {'success': True, 'message': 'Оплата успешно инициирована',
+                                     'data': {'id': 1, 'amount': '100.00'}, 'clientSecret': '...'}}),
+            400: openapi.Response('Неверные данные', examples={
+                'application/json': {'success': False, 'errors': {'amount': ['Это поле обязательно.']}}}),
             401: 'Не авторизован',
-            404: 'Запись не найдена'
+            404: openapi.Response('Запись Joinclub не найдена', examples={
+                'application/json': {'success': False, 'message': 'Запись Joinclub не найдена'}})
         }
     )
     def post(self, request, joinclub_id):
-        joinclub = get_object_or_404(Joinclub, pk=joinclub_id, user__user=request.user)
-        amount = request.data.get('amount')
-        payment_method_id = request.data.get('payment_method_id')
-
-        if not all([amount, payment_method_id]):
-            return Response({"success": False, "errors": "Необходимо указать сумму и ID платежного метода."},
-                            status=status.HTTP_400_BAD_REQUEST)
-
+        logger.debug("Received data: %s", request.data)
         try:
-            intent = stripe.PaymentIntent.create(
-                amount=int(amount),
-                currency='usd',  # Можно изменить на 'kgs' или другую валюту
-                payment_method=payment_method_id,
-                confirm=True,
-                off_session=False,
-            )
+            joinclub_instance = Joinclub.objects.get(id=joinclub_id, user=request.user.userprofile)
+            amount = request.data.get('amount')
+            currency = request.data.get('currency', 'usd')
+            stripe_token = request.data.get('stripe_token')
 
-            Payment.objects.create(
-                joinclub=joinclub,
-                stripe_payment_intent_id=intent.id,
-                amount=amount,
+            if not amount or not stripe_token:
+                return Response({
+                    'success': False,
+                    'errors': {'amount': ['Это поле обязательно'], 'stripe_token': ['Токен карты обязателен']}
+                }, status=status.HTTP_400_BAD_REQUEST)
+
+            # Валидация суммы
+            try:
+                amount_float = float(amount)
+                if amount_float <= 0:
+                    return Response({
+                        'success': False,
+                        'errors': {'amount': ['Сумма должна быть положительной']}
+                    }, status=status.HTTP_400_BAD_REQUEST)
+            except (ValueError, TypeError):
+                return Response({
+                    'success': False,
+                    'errors': {'amount': ['Сумма должна быть числом']}
+                }, status=status.HTTP_400_BAD_REQUEST)
+
+            # Создание платежного намерения через Stripe
+            intent = stripe.PaymentIntent.create(
+                amount=int(amount_float * 100),  # Конвертация в центы
+                currency=currency,
+                payment_method_data={
+                    "type": "card",
+                    "card": {
+                        "token": stripe_token
+                    }
+                },
+                confirmation_method='manual',
+                confirm=True,
+                description=f"Оплата за {joinclub_instance.schedule.title}",
+                return_url="http://127.0.0.1:8000/swagger/"
             )
-            return Response({"success": True, "message": "Оплата прошла успешно", "payment_intent_id": intent.id},
-                            status=status.HTTP_200_OK)
+            # Проверка статуса платежа
+            if intent.status == 'succeeded':
+                payment_data = {
+                    'joinclub': joinclub_id,  # Передаем ID вместо объекта
+                    'amount': amount_float,
+                    'stripe_payment_intent_id': intent.id
+                }
+                serializer = PaymentSerializer(data=payment_data)
+                if serializer.is_valid():
+                    payment = serializer.save()
+                    return Response({
+                        'success': True,
+                        'message': 'Оплата успешно завершена',
+                        'data': serializer.data,
+                        'clientSecret': intent.client_secret
+                    }, status=status.HTTP_201_CREATED)
+                return Response({
+                    'success': False,
+                    'errors': serializer.errors
+                }, status=status.HTTP_400_BAD_REQUEST)
+            else:
+                return Response({
+                    'success': False,
+                    'message': f'Платеж не завершен. Статус: {intent.status}. Попробуйте еще раз.'
+                }, status=status.HTTP_400_BAD_REQUEST)
+        except Joinclub.DoesNotExist:
+            return Response({
+                'success': False,
+                'message': 'Запись Joinclub не найдена'
+            }, status=status.HTTP_404_NOT_FOUND)
         except stripe.error.StripeError as e:
-            return Response({"success": False, "errors": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+            logger.error("Stripe error: %s", str(e))
+            return Response({
+                'success': False,
+                'errors': {'stripe': [str(e)]}
+            }, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            logger.error("Unexpected error: %s", str(e))
+            return Response({
+                'success': False,
+                'errors': {'general': ['Произошла ошибка на сервере']}
+            }, status=status.HTTP_400_BAD_REQUEST)
 
 
 class AttendanceView(APIView):
