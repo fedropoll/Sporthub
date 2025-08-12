@@ -9,32 +9,37 @@ from .views import (
     ClassScheduleView, JoinclubView, PaymentView, AttendanceView,
 )
 
-# Создание роутера для ViewSet'ов
 router = DefaultRouter()
+
+# Основные ViewSet'ы
+router.register(r'clubs', ClubViewSet)
+router.register(r'halls', HallViewSet)
+router.register(r'trainers', TrainerViewSet)
+router.register(r'ads', AdViewSet)
+router.register(r'reviews', ReviewViewSet)
+router.register(r'notifications', NotificationViewSet)
 router.register(r'profile', UserProfileViewSet, basename='profile')
 router.register(r'clients', ClientViewSet, basename='clients')
-router.register(r'halls', HallViewSet, basename='halls')
-router.register(r'clubs', ClubViewSet, basename='clubs')
-router.register(r'trainers', TrainerViewSet, basename='trainers')
-router.register(r'ads', AdViewSet, basename='ads')
-router.register(r'reviews', ReviewViewSet, basename='reviews')
-router.register(r'notifications', NotificationViewSet, basename='notifications')
 
 urlpatterns = [
-    # Маршруты для DRF ViewSet'ов
+    # Аутентификация
+    path('auth/', include([
+        path('register/', RegisterView.as_view(), name='register'),
+        path('verify-code/', VerifyCodeView.as_view(), name='verify_code'),
+        path('login/', LoginView.as_view(), name='login'),
+        path('forgot-password/', ForgotPasswordView.as_view(), name='forgot_password'),
+        path('reset-password/', ResetPasswordView.as_view(), name='reset_password'),
+        path('resend-code/', ResendCodeView.as_view(), name='resend_code'),
+    ])),
+
+    # Тренировки и расписание
+    path('schedules/', include([
+        path('', ClassScheduleView.as_view(), name='class_schedule'),
+        path('join/', JoinclubView.as_view(), name='joinclub'),
+        path('payments/<int:joinclub_id>/', PaymentView.as_view(), name='payment'),
+        path('attendance/<int:joinclub_id>/', AttendanceView.as_view(), name='attendance_view'),
+    ])),
+
+    # Основное API
     path('', include(router.urls)),
-
-    # Маршруты для обычных APIView
-    path('auth/register/', RegisterView.as_view(), name='register'),
-    path('auth/verify-code/', VerifyCodeView.as_view(), name='verify_code'),
-    path('auth/login/', LoginView.as_view(), name='login'),
-    path('auth/forgot-password/', ForgotPasswordView.as_view(), name='forgot_password'),
-    path('auth/reset-password/', ResetPasswordView.as_view(), name='reset_password'),
-    path('auth/resend-code/', ResendCodeView.as_view(), name='resend_code'),
-
-    # Маршруты для других APIView
-    path('schedules/', ClassScheduleView.as_view(), name='class_schedule'),
-    path('joinclubs/', JoinclubView.as_view(), name='joinclub'),
-    path('payments/<int:joinclub_id>/', PaymentView.as_view(), name='payment'),
-    path('attendance/<int:joinclub_id>/', AttendanceView.as_view(), name='attendance_view'),
 ]

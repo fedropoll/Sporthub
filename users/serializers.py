@@ -8,13 +8,10 @@ from .models import (
 )
 from .utils import generate_and_send_code
 
-# Получаем модель пользователя Django
 User = get_user_model()
 
 
 class UserSerializer(serializers.ModelSerializer):
-    """Сериализатор для модели User."""
-
     class Meta:
         model = User
         fields = ['id', 'username', 'email', 'first_name', 'last_name']
@@ -28,48 +25,16 @@ class UserShortSerializer(serializers.ModelSerializer):
 
 
 class RegisterSerializer(serializers.Serializer):
-    """Сериализатор для регистрации нового пользователя."""
-    email = serializers.EmailField(
-        help_text="Введите ваш email. На него придет код подтверждения."
-    )
-    password = serializers.CharField(
-        write_only=True, min_length=8,
-        help_text="Пароль должен содержать минимум 8 символов."
-    )
-    confirmPassword = serializers.CharField(
-        write_only=True,
-        help_text="Повторите пароль для подтверждения."
-    )
-    firstName = serializers.CharField(
-        max_length=30,
-        help_text="Ваше имя."
-    )
-    lastName = serializers.CharField(
-        max_length=30,
-        help_text="Ваша фамилия."
-    )
-    phone_number = serializers.CharField(
-        max_length=20,
-        help_text="Ваш номер телефона (например, +996123456789)."
-    )
-    birth_date = serializers.DateField(
-        help_text="Дата рождения в формате ГГГГ-ММ-ДД (например, 2000-01-01)."
-    )
-    gender = serializers.CharField(
-        max_length=10,
-        required=False,
-        help_text="Пол пользователя."
-    )
-    address = serializers.CharField(
-        max_length=100,
-        required=False,
-        help_text="Адрес проживания."
-    )
-    remember = serializers.BooleanField(
-        default=False,
-        required=False,
-        help_text="Запомнить меня на этом устройстве?"
-    )
+    email = serializers.EmailField(help_text="Введите ваш email. На него придет код подтверждения.")
+    password = serializers.CharField(write_only=True, min_length=8, help_text="Пароль должен содержать минимум 8 символов.")
+    confirmPassword = serializers.CharField(write_only=True, help_text="Повторите пароль для подтверждения.")
+    firstName = serializers.CharField(max_length=30, help_text="Ваше имя.")
+    lastName = serializers.CharField(max_length=30, help_text="Ваша фамилия.")
+    phone_number = serializers.CharField(max_length=20, help_text="Ваш номер телефона (например, +996123456789).")
+    birth_date = serializers.DateField(help_text="Дата рождения в формате ГГГГ-ММ-ДД (например, 2000-01-01).")
+    gender = serializers.CharField(max_length=10, required=False, help_text="Пол пользователя.")
+    address = serializers.CharField(max_length=100, required=False, help_text="Адрес проживания.")
+    remember = serializers.BooleanField(default=False, required=False, help_text="Запомнить меня на этом устройстве?")
 
     def validate(self, data):
         if data['password'] != data['confirmPassword']:
@@ -99,7 +64,6 @@ class RegisterSerializer(serializers.Serializer):
 
 
 class UserProfileSerializer(serializers.ModelSerializer):
-    """Сериализатор для модели UserProfile."""
     first_name = serializers.CharField(source='user.first_name', required=False)
     last_name = serializers.CharField(source='user.last_name', required=False)
     email = serializers.EmailField(source='user.email', required=False)
@@ -126,7 +90,6 @@ class UserProfileSerializer(serializers.ModelSerializer):
 
 
 class PasswordChangeSerializer(serializers.Serializer):
-    """Сериализатор для смены пароля."""
     old_password = serializers.CharField(required=True)
     new_password = serializers.CharField(required=True, min_length=8)
     confirm_new_password = serializers.CharField(required=True, min_length=8)
@@ -147,7 +110,6 @@ class PasswordChangeSerializer(serializers.Serializer):
 
 
 class VerifyCodeSerializer(serializers.Serializer):
-    """Сериализатор для верификации кода."""
     email = serializers.EmailField()
     code = serializers.CharField(max_length=4, min_length=4)
 
@@ -158,10 +120,7 @@ class VerifyCodeSerializer(serializers.Serializer):
             raise ValidationError({"email": "Пользователь не найден"})
 
         try:
-            reset_code = PasswordResetCode.objects.filter(
-                user=user,
-                is_used=False
-            ).latest('created_at')
+            reset_code = PasswordResetCode.objects.filter(user=user, is_used=False).latest('created_at')
         except PasswordResetCode.DoesNotExist:
             raise ValidationError({"code": "Код не найден или уже использован"})
 
@@ -181,7 +140,6 @@ class VerifyCodeSerializer(serializers.Serializer):
 
 
 class LoginSerializer(serializers.Serializer):
-    """Сериализатор для входа пользователя."""
     email = serializers.EmailField()
     password = serializers.CharField(write_only=True)
     remember = serializers.BooleanField(default=False, required=False)
@@ -211,7 +169,6 @@ class LoginSerializer(serializers.Serializer):
 
 
 class ForgotPasswordSerializer(serializers.Serializer):
-    """Сериализатор для запроса сброса пароля."""
     email = serializers.EmailField()
 
     def validate_email(self, value):
@@ -221,7 +178,6 @@ class ForgotPasswordSerializer(serializers.Serializer):
 
 
 class ResetPasswordSerializer(serializers.Serializer):
-    """Сериализатор для сброса пароля."""
     email = serializers.EmailField()
     code = serializers.CharField(max_length=4, min_length=4)
     new_password = serializers.CharField(write_only=True, min_length=8)
@@ -231,23 +187,19 @@ class ResetPasswordSerializer(serializers.Serializer):
         if data['new_password'] != data['confirm_new_password']:
             raise ValidationError({"confirm_new_password": "Пароли не совпадают"})
 
-        # Этот блок кода дублируется и вызывает ошибку.
-        # if data['password'] != data['confirmPassword']:
-        #     raise ValidationError({"confirmPassword": "Пароли не совпадают"})
-
         try:
             user = User.objects.get(email=data['email'])
         except User.DoesNotExist:
             raise ValidationError({"email": "Пользователь не найден"})
+
         try:
-            reset_code = PasswordResetCode.objects.filter(
-                user=user,
-                is_used=False
-            ).latest('created_at')
+            reset_code = PasswordResetCode.objects.filter(user=user, is_used=False).latest('created_at')
         except PasswordResetCode.DoesNotExist:
             raise ValidationError({"code": "Код не найден или уже использован"})
+
         if reset_code.code != data['code']:
             raise ValidationError({"code": "Неверный код"})
+
         if reset_code.is_expired():
             raise ValidationError({"code": "Код истек. Запросите новый"})
 
@@ -259,7 +211,6 @@ class ResetPasswordSerializer(serializers.Serializer):
         user = self.validated_data['user']
         reset_code = self.validated_data['reset_code']
 
-        # В этом месте нужно использовать new_password
         user.set_password(self.validated_data['new_password'])
         user.save()
 
@@ -270,63 +221,50 @@ class ResetPasswordSerializer(serializers.Serializer):
 
 
 class AdSerializer(serializers.ModelSerializer):
-    """Сериализатор для модели Ad."""
-
     class Meta:
         model = Ad
         fields = '__all__'
 
 
 class HallSerializer(serializers.ModelSerializer):
-    """Сериализатор для модели Hall."""
-
     class Meta:
         model = Hall
         fields = '__all__'
+        ref_name = 'UserHall'  # добавлено уникальное имя
 
 
 class ClassScheduleSerializer(serializers.ModelSerializer):
-    """Сериализатор для модели ClassSchedule."""
-
     class Meta:
         model = ClassSchedule
         fields = ['id', 'title', 'day_of_week', 'start_time', 'end_time']
 
 
 class ClubSerializer(serializers.ModelSerializer):
-    """Сериализатор для модели Club."""
-
     class Meta:
         model = Club
         fields = '__all__'
+        ref_name = 'UserClub'
 
 
 class JoinclubSerializer(serializers.ModelSerializer):
-    """Сериализатор для модели Joinclub."""
-
     class Meta:
         model = Joinclub
         fields = ['id', 'user', 'schedule', 'registration_date', 'age_group']
 
 
 class TrainerSerializer(serializers.ModelSerializer):
-    """Сериализатор для модели Trainer."""
-
     class Meta:
         model = Trainer
         fields = '__all__'
 
 
 class TrainerNameSerializer(serializers.ModelSerializer):
-    """Сериализатор для вывода имени тренера."""
-
     class Meta:
         model = Trainer
         fields = ['first_name', 'last_name']
 
 
 class PaymentSerializer(serializers.ModelSerializer):
-    """Сериализатор для модели Payment."""
     stripe_payment_intent_id = serializers.CharField(max_length=50, required=False, allow_blank=True)
 
     class Meta:
@@ -335,7 +273,6 @@ class PaymentSerializer(serializers.ModelSerializer):
 
 
 class ClientDetailSerializer(serializers.ModelSerializer):
-    """Сериализатор для детальной информации о клиенте."""
     user = serializers.CharField(source='user.username', read_only=True)
     first_name = serializers.CharField(source='user.first_name', read_only=True)
     last_name = serializers.CharField(source='user.last_name', read_only=True)
@@ -347,15 +284,12 @@ class ClientDetailSerializer(serializers.ModelSerializer):
 
 
 class AttendanceSerializer(serializers.ModelSerializer):
-    """Сериализатор для модели Attendance."""
-
     class Meta:
         model = Attendance
         fields = ['id', 'joinclub', 'attendance_date', 'is_present', 'notes']
 
 
 class ReviewSerializer(serializers.ModelSerializer):
-    """Сериализатор для модели Review."""
     user_info = serializers.SerializerMethodField()
     trainer_name = serializers.CharField(source='trainer.first_name', read_only=True)
     club_name = serializers.CharField(source='club.title', read_only=True)
@@ -368,13 +302,15 @@ class ReviewSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Review
-        fields = ['id', 'user', 'user_info', 'trainer', 'trainer_name', 'club', 'club_name', 'text', 'rating',
-                  'created_at']
+        fields = [
+            'id', 'user', 'user_info', 'trainer', 'trainer_name',
+            'club', 'club_name', 'text', 'rating', 'created_at'
+        ]
         read_only_fields = ['id', 'user_info', 'trainer_name', 'club_name', 'created_at']
+        ref_name = 'UserReview'  # добавлено уникальное имя
 
 
 class NotificationSerializer(serializers.ModelSerializer):
-    """Сериализатор для модели Notification."""
     user_info = serializers.SerializerMethodField()
 
     def get_user_info(self, obj):

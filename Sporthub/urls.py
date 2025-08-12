@@ -23,7 +23,7 @@ urlpatterns = [
 
     # API
     path('api/', include('main.urls')),
-    path('api/users/', include('users.urls')),
+    path('', include('users.urls')),
 
     # JWT Authentication Endpoints
     path('api/token/', TokenRefreshView.as_view(), name='token_refresh'), # Эндпоинт для refresh-токена

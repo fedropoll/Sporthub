@@ -14,6 +14,9 @@ class HallSerializer(serializers.ModelSerializer):
             'capacity', 'latitude', 'longitude', 'average_rating',
             'review_count', 'video_url'
         ]
+        ref_name = 'MainHall'
+
+
 
 class ClubSerializer(serializers.ModelSerializer):
     average_rating = serializers.FloatField(read_only=True)
@@ -31,6 +34,8 @@ class ClubSerializer(serializers.ModelSerializer):
         extra_kwargs = {
             'hall': {'write_only': True}
         }
+        ref_name = 'MainClub'  # уникальное имя для Swagger
+
 
 class ReviewSerializer(serializers.ModelSerializer):
     class Meta:
@@ -40,6 +45,7 @@ class ReviewSerializer(serializers.ModelSerializer):
             'created_at', 'updated_at'
         ]
         read_only_fields = ['author', 'created_at', 'updated_at']
+        ref_name = 'MainReview'  # чтобы не конфликтовать
 
     def validate(self, data):
         if not data.get('hall') and not data.get('club'):
@@ -48,11 +54,13 @@ class ReviewSerializer(serializers.ModelSerializer):
             )
         return data
 
+
 class HallDetailSerializer(HallSerializer):
     reviews = ReviewSerializer(many=True, read_only=True)
 
     class Meta(HallSerializer.Meta):
         fields = HallSerializer.Meta.fields + ['reviews']
+
 
 class ClubDetailSerializer(ClubSerializer):
     reviews = ReviewSerializer(many=True, read_only=True)
