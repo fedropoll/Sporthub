@@ -26,7 +26,8 @@ def create_user_profile_and_notification(sender, instance, created, **kwargs):
     """
     if created:
         # Создаем профиль пользователя UserProfile
-        UserProfile.objects.get_or_create(user=instance)
+        # Правильно обрабатываем возвращаемое значение get_or_create
+        user_profile, created = UserProfile.objects.get_or_create(user=instance)
 
         # Создаем уведомление о регистрации
         message = f"Новый пользователь {instance.username} зарегистрировался."

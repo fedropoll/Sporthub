@@ -4,7 +4,7 @@ from django.contrib.auth import authenticate
 from rest_framework.exceptions import ValidationError
 from .models import (
     UserProfile, PasswordResetCode, Ad, Hall, Club, Trainer,
-    Review, Notification, ClassSchedule, Joinclub, Payment, Attendance
+    Review, Notification, ClassSchedule, Joinclub, Attendance
 )
 from .utils import generate_and_send_code
 
@@ -262,14 +262,6 @@ class TrainerNameSerializer(serializers.ModelSerializer):
     class Meta:
         model = Trainer
         fields = ['first_name', 'last_name']
-
-
-class PaymentSerializer(serializers.ModelSerializer):
-    stripe_payment_intent_id = serializers.CharField(max_length=50, required=False, allow_blank=True)
-
-    class Meta:
-        model = Payment
-        fields = ['id', 'joinclub', 'stripe_payment_intent_id', 'amount', 'payment_date']
 
 
 class ClientDetailSerializer(serializers.ModelSerializer):

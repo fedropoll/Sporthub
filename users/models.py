@@ -7,7 +7,7 @@ from django.contrib.postgres.fields import ArrayField
 
 # --- Пользовательский профиль ---
 class UserProfile(models.Model):
-    user = models.OneToOneField(User, on_delete=models.CASCADE)
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='profile')
     first_name = models.CharField(max_length=50, null=True, blank=True)
     last_name = models.CharField(max_length=50, null=True, blank=True)
     phone_number = models.CharField(max_length=20, null=True, blank=True)
@@ -119,20 +119,20 @@ class Joinclub(models.Model):
     class Meta:
         unique_together = ('user', 'schedule')
 
+    @property
+    def get_attendance_summary(self):
+        one_month_ago = timezone.now() - timedelta(days=30)
+        # Исправлено: используем 'self' вместо 'self.joinclub'
+        attendances = Attendance.objects.filter(joinclub=self, attendance_date__gte=one_month_ago)
+        present_count = attendances.filter(is_present=True).count()
+        absent_count = attendances.filter(is_present=False).count()
+        return {
+            'present': present_count,
+            'absent': absent_count,
+            'total': present_count + absent_count
+        }
     def __str__(self):
         return f"{self.user} - {self.schedule.title} ({self.age_group})"
-
-
-# --- Оплата (Payment) ---
-class Payment(models.Model):
-    joinclub = models.OneToOneField(Joinclub, on_delete=models.CASCADE)
-    stripe_payment_intent_id = models.CharField(max_length=50, null=True, blank=True)
-    amount = models.DecimalField(max_digits=6, decimal_places=2)
-    payment_date = models.DateTimeField(auto_now_add=True)
-
-    def __str__(self):
-        return f"Payment for {self.joinclub.user} - {self.amount} сом"
-
 
 # --- Тренеры (Trainer) ---
 class Trainer(models.Model):
@@ -157,17 +157,6 @@ class Attendance(models.Model):
     class Meta:
         verbose_name_plural = "Attendances"
 
-    @property
-    def get_attendance_summary(self):
-        one_month_ago = timezone.now() - timedelta(days=30)
-        attendances = Attendance.objects.filter(joinclub=self.joinclub, attendance_date__gte=one_month_ago)
-        present_count = attendances.filter(is_present=True).count()
-        absent_count = attendances.filter(is_present=False).count()
-        return {
-            'present': present_count,
-            'absent': absent_count,
-            'total': present_count + absent_count
-        }
 
     def __str__(self):
         return f"{self.joinclub.user} - {self.joinclub.schedule.title} on {self.attendance_date}"

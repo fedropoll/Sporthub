@@ -1,35 +1,33 @@
-from rest_framework import viewsets, permissions, status
+from rest_framework import viewsets, permissions, status, mixins
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated, IsAdminUser, AllowAny
 from rest_framework_simplejwt.tokens import RefreshToken
 from django.contrib.auth.models import User, AnonymousUser
+from django.core.exceptions import ObjectDoesNotExist
 from django.shortcuts import get_object_or_404
 from drf_yasg.utils import swagger_auto_schema
 from drf_yasg import openapi
 from rest_framework_simplejwt.views import TokenObtainPairView
 from .models import (
     UserProfile, PasswordResetCode, Trainer, Hall, Club, Ad, Review, Notification,
-    ClassSchedule, Joinclub, Payment, Attendance
+    ClassSchedule, Joinclub, Attendance
 )
 from .serializers import (
     UserSerializer, RegisterSerializer, VerifyCodeSerializer, LoginSerializer,
     UserProfileSerializer, TrainerSerializer, HallSerializer, ClubSerializer,
     AdSerializer, ReviewSerializer, NotificationSerializer, ClientDetailSerializer,
     ForgotPasswordSerializer, ResetPasswordSerializer, ClassScheduleSerializer,
-    JoinclubSerializer, PaymentSerializer, AttendanceSerializer
+    JoinclubSerializer, AttendanceSerializer
 )
 from .utils import generate_and_send_code
 
 import logging
-import stripe
 import datetime
 
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
-
-stripe.api_key = "sk_test_51RtraO9OcwNpz5T4gdpVXRnB7HoHB5Cq7rnWEDMjNv8qb4vIlbQyhJrnHSKTtMnbTOJVOpfrohM6B7TwNdLGtyfY00fggb3hd9"
 
 
 # -------------------- AUTHENTICATION VIEWS --------------------
@@ -399,133 +397,72 @@ class ResendCodeView(APIView):
 
 
 # -------------------- RESOURCE VIEWS --------------------
-class UserProfileViewSet(viewsets.ModelViewSet):
-    queryset = UserProfile.objects.all()
-    serializer_class = UserProfileSerializer
+class UserProfileViewSet(viewsets.ViewSet):
     permission_classes = [IsAuthenticated]
-    swagger_auto_schema(
-        tags=['👤 Профиль пользователя'],
-        operation_summary='оплзователи',
-    )
-    def get_permissions(self):
-        """
-        Переопределение прав доступа в зависимости от действия.
-        """
-        if self.action in ['list']:
-            return [IsAdminUser()]
-        elif self.action in ['retrieve']:
-            return [IsAuthenticated()]
-        elif self.action in ['update', 'partial_update', 'destroy']:
-            return [IsOwnerOrReadOnly()]
-        return super().get_permissions()
 
     @swagger_auto_schema(
-        tags=['👤 Профиль пользователя'],
-        operation_summary='Список профилей (только для администраторов)',
+        tags=['👤Профиль пользователя'],
+        operation_summary="Получить данные профиля пользователя",
         operation_description="""
-        Возвращает список всех профилей пользователей.
-        
-        ### Фильтрация:
-        - `user__email` - фильтр по email пользователя
-        - `phone` - фильтр по номеру телефона
-        - `birth_date` - фильтр по дате рождения
-        
-        ### Сортировка:
-        - `?ordering=user__first_name` - сортировка по имени
-        - `?ordering=-created_at` - сортировка по дате создания (новые сначала)
+        Возвращает данные профиля (UserProfile) текущего аутентифицированного пользователя.
+        Требуется авторизация.
         """,
-        manual_parameters=[
-            openapi.Parameter('user__email', openapi.IN_QUERY, type=openapi.TYPE_STRING, description='Фильтр по email'),
-            openapi.Parameter('phone', openapi.IN_QUERY, type=openapi.TYPE_STRING, description='Фильтр по номеру телефона'),
-            openapi.Parameter('birth_date', openapi.IN_QUERY, type=openapi.TYPE_STRING, format='date', description='Фильтр по дате рождения (YYYY-MM-DD)')
-        ]
-    )
-    def list(self, request, *args, **kwargs):
-        return super().list(request, *args, **kwargs)
-
-    @swagger_auto_schema(
-        tags=['👤 Профиль пользователя'],
-        operation_summary='Детали профиля',
-        operation_description="""
-        Возвращает детальную информацию о профиле пользователя.
-        
-        ### Ответ содержит:
-        - Основная информация о пользователе (имя, email, телефон и т.д.)
-        - Ссылки на аватар
-        - Дополнительные данные профиля
-        """
-    )
-    def retrieve(self, request, *args, **kwargs):
-        return super().retrieve(request, *args, **kwargs)
-
-    @swagger_auto_schema(
-        tags=['👤 Профиль пользователя'],
-        operation_summary='Обновление профиля',
-        operation_description="""
-        Полное обновление данных профиля.
-        
-        ### Доступные поля для обновления:
-        - `phone` - номер телефона
-        - `birth_date` - дата рождения (YYYY-MM-DD)
-        - `gender` - пол (M - мужской, F - женский)
-        - `avatar` - аватар пользователя (изображение)
-        - `address` - адрес проживания
-        
-        ### Примечания:
-        - Для загрузки аватара используйте `multipart/form-data`
-        - Все поля, кроме аватара, можно обновлять по отдельности
-        """
-    )
-    def update(self, request, *args, **kwargs):
-        return super().update(request, *args, **kwargs)
-
-    @swagger_auto_schema(
-        tags=['👤 Профиль пользователя'],
-        operation_summary='Частичное обновление профиля',
-        operation_description="""
-        Частичное обновление данных профиля.
-        
-        Позволяет обновить только указанные поля профиля.
-        
-        ### Пример запроса:
-        ```json
-        {
-            "phone": "+77771234567",
-            "address": "г. Алматы, ул. Примерная, 123"
+        responses={
+            200: openapi.Response('Данные профиля', UserProfileSerializer),
+            401: 'Не авторизован',
+            404: openapi.Response('Профиль не найден', examples={'application/json': {'success': False, 'message': 'Профиль не найден'}})
         }
-        ```
-        """
     )
-    def partial_update(self, request, *args, **kwargs):
-        return super().partial_update(request, *args, **kwargs)
+    def get(self, request):
+        try:
+            user_profile = request.user.profile
+            serializer = UserProfileSerializer(user_profile)
+            return Response({
+                'success': True,
+                'data': serializer.data
+            }, status=status.HTTP_200_OK)
+        except UserProfile.DoesNotExist:
+            return Response({
+                'success': False,
+                'message': 'Профиль не найден'
+            }, status=status.HTTP_404_NOT_FOUND)
 
     @swagger_auto_schema(
-        tags=['👤 Профиль пользователя'],
-        operation_summary='Удаление профиля (только для администраторов)',
+        tags=['👤Профиль пользователя'],
+        operation_summary="Редактировать данные профиля пользователя",
         operation_description="""
-        Удаление профиля пользователя.
-        
-        ### Внимание:
-        - Удаление профиля необратимо
-        - Удаляются все связанные данные пользователя
-        - Доступно только администраторам
-        """
+        Обновляет данные профиля (UserProfile) текущего аутентифицированного пользователя.
+        Используется `partial=True`, что позволяет обновлять только некоторые поля.
+        Требуется авторизация.
+        """,
+        request_body=UserProfileSerializer,
+        responses={
+            200: openapi.Response('Обновленные данные профиля', UserProfileSerializer),
+            400: openapi.Response('Ошибка валидации', examples={'application/json': {'success': False, 'errors': {'phone_number': ['Неверный формат номера']}}}),
+            401: 'Не авторизован',
+            404: openapi.Response('Профиль не найден', examples={'application/json': {'success': False, 'message': 'Профиль не найден'}})
+        }
     )
-    def destroy(self, request, *args, **kwargs):
-        return super().destroy(request, *args, **kwargs)
-
-    def get_queryset(self):
-        """
-        Возвращает queryset в зависимости от прав пользователя.
-        """
-        queryset = super().get_queryset()
-
-        # Админы видят все профили
-        if self.request.user.is_staff:
-            return queryset
-
-        # Обычные пользователи видят только свой профиль
-        return queryset.filter(user=self.request.user)
+    def put(self, request):
+        try:
+            user_profile = UserProfile.objects.get(user=request.user)
+            serializer = UserProfileSerializer(user_profile, data=request.data, partial=True)
+            if serializer.is_valid():
+                serializer.save()
+                return Response({
+                    'success': True,
+                    'message': 'Профиль успешно обновлен',
+                    'data': serializer.data
+                }, status=status.HTTP_200_OK)
+            return Response({
+                'success': False,
+                'errors': serializer.errors
+            }, status=status.HTTP_400_BAD_REQUEST)
+        except UserProfile.DoesNotExist:
+            return Response({
+                'success': False,
+                'message': 'Профиль не найден'
+            }, status=status.HTTP_404_NOT_FOUND)
 
 
 class ClientViewSet(viewsets.ModelViewSet):
@@ -887,54 +824,55 @@ class ReviewViewSet(viewsets.ModelViewSet):
 
 
 # Уведомления
-class NotificationViewSet(viewsets.ModelViewSet):
-    queryset = Notification.objects.all()
+class NotificationViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
     serializer_class = NotificationSerializer
-    permission_classes = [IsAuthenticated]
-
-    def get_permissions(self):
-        if self.action in ['list', 'retrieve', 'create', 'mark_as_read']:
-            return [IsAuthenticated()]
-        return [IsAdminUser()]
+    permission_classes = [IsAdminUser]
 
     def get_queryset(self):
-        if self.request.user.is_staff:
-            return Notification.objects.all()
-        return Notification.objects.filter(user=self.request.user)
-
+        return Notification.objects.filter(user=self.request.user).order_by('-created_at')
     @swagger_auto_schema(
         tags=['🔔 Уведомления'],
-        operation_summary='Получить список уведомлений',
-        operation_description='Возвращает список уведомлений для текущего пользователя. Доступно только авторизованным пользователям.')
-    def list(self, request, *args, **kwargs):
-        return super().list(request, *args, **kwargs)
-
-    @swagger_auto_schema(
-        tags=['🔔 Уведомления'],
-        operation_summary='Получить детали уведомления',
-        operation_description='Возвращает детальную информацию об уведомлении для текущего пользователя. Доступно только авторизованным пользователям.')
-    def retrieve(self, request, *args, **kwargs):
-        return super().retrieve(request, *args, **kwargs)
-
-    @swagger_auto_schema(
-        tags=['🔔 Уведомления'],
-        operation_summary='Создать уведомление',
-        operation_description='Создает новое уведомление для текущего пользователя. Доступно только авторизованным пользователям.')
-    def create(self, request, *args, **kwargs):
-        return super().create(request, *args, **kwargs)
-
-    @swagger_auto_schema(
-        tags=['🔔 Уведомления'],
-        operation_summary='Отметить уведомление как прочитанное',
-        operation_description='Помечает конкретное уведомление как прочитанное. Доступно только авторизованным пользователям.',
-        responses={200: 'Уведомление успешно помечено как прочитанное.'}
+        operation_summary="Получить все уведомления",
+        operation_description="Возвращает список уведомлений для текущего пользователя",
+        manual_parameters=[
+            openapi.Parameter(
+                'search',
+                openapi.IN_QUERY,
+                description='Поиск по тексту уведомления',
+                type=openapi.TYPE_STRING
+            ),
+            openapi.Parameter(
+                'page',
+                openapi.IN_QUERY,
+                description='Номер страницы для пагинации',
+                type=openapi.TYPE_INTEGER
+            )
+        ],
+        responses={
+            200: openapi.Response('Список уведомлений', NotificationSerializer(many=True)),
+            401: openapi.Response('Не авторизован')
+        }
     )
-    @action(detail=True, methods=['post'])
-    def mark_as_read(self, request, pk=None):
-        notification = self.get_object()
-        notification.is_read = True
-        notification.save()
-        return Response(status=status.HTTP_200_OK)
+    def list(self, request, *args, **kwargs):
+        queryset = self.get_queryset()
+
+        # Применяем поиск если указан параметр search
+        search_query = request.query_params.get('search')
+        if search_query:
+            queryset = queryset.filter(message__icontains=search_query)
+
+        # Применяем пагинацию
+        page = self.paginate_queryset(queryset)
+        if page is not None:
+            serializer = self.get_serializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
+
+        serializer = self.get_serializer(queryset, many=True)
+        return Response(serializer.data)
+
+    def get_queryset(self):
+        return Notification.objects.filter(user=self.request.user).order_by('-created_at')
+
 class ClassScheduleView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -999,7 +937,7 @@ class JoinclubView(APIView):
     def get(self, request):
         try:
             user_profile = request.user.userprofile
-        except UserProfile.DoesNotExist:
+        except ObjectDoesNotExist:
             return Response({
                 'success': False,
                 'message': 'Профиль пользователя не найден'
@@ -1051,148 +989,6 @@ class JoinclubView(APIView):
                         status=status.HTTP_201_CREATED)
 
 
-class PaymentView(APIView):
-    permission_classes = [IsAuthenticated]
-
-    @swagger_auto_schema(
-        tags=['💳 Оплата'],
-        operation_summary="Получить список оплат для конкретной записи",
-        operation_description="Возвращает список всех оплат, связанных с конкретной записью на кружок (joinclub). Требуется авторизация, и пользователь должен быть владельцем joinclub.",
-        responses={
-            200: openapi.Response('Список оплат', PaymentSerializer(many=True)),
-            401: 'Не авторизован',
-            404: openapi.Response('Joinclub не найден',
-                                  examples={'application/json': {'success': False, 'message': 'Joinclub не найден'}})
-        }
-    )
-
-    def get(self, request, joinclub_id):
-        try:
-            joinclub_instance = Joinclub.objects.get(id=joinclub_id, user=request.user.userprofile)
-            payments = Payment.objects.filter(joinclub=joinclub_instance)
-            serializer = PaymentSerializer(payments, many=True)
-            return Response({
-                'success': True,
-                'data': serializer.data
-            }, status=status.HTTP_200_OK)
-        except Joinclub.DoesNotExist:
-            return Response({
-                'success': False,
-                'message': 'Joinclub не найден'
-            }, status=status.HTTP_404_NOT_FOUND)
-
-    @swagger_auto_schema(
-        tags=['💳 Оплата'],
-        operation_summary="Создать новую оплату",
-        operation_description="Создаёт новую запись об оплате для конкретной записи на кружок (joinclub). Использует Stripe для обработки платежа. Требуется авторизация, и пользователь должен быть владельцем joinclub.",
-        request_body=openapi.Schema(
-            type=openapi.TYPE_OBJECT,
-            required=['amount', 'stripe_token'],
-            properties={
-                'amount': openapi.Schema(type=openapi.TYPE_NUMBER, description='Сумма оплаты в валюте'),
-                'currency': openapi.Schema(type=openapi.TYPE_STRING, description='Валюта (по умолчанию USD)',
-                                           default='usd'),
-                'stripe_token': openapi.Schema(type=openapi.TYPE_STRING, description='Токен карты от Stripe.js'),
-            }
-        ),
-        responses={
-            201: openapi.Response('Оплата создана', examples={
-                'application/json': {'success': True, 'message': 'Оплата успешно инициирована',
-                                     'data': {'id': 1, 'amount': '100.00'}, 'clientSecret': '...'}}),
-            400: openapi.Response('Неверные данные', examples={
-                'application/json': {'success': False, 'errors': {'amount': ['Это поле обязательно.']}}}),
-            401: 'Не авторизован',
-            404: openapi.Response('Запись Joinclub не найдена', examples={
-                'application/json': {'success': False, 'message': 'Запись Joinclub не найдена'}})
-        }
-    )
-    def post(self, request, joinclub_id):
-        logger.debug("Received data: %s", request.data)
-        try:
-            joinclub_instance = Joinclub.objects.get(id=joinclub_id, user=request.user.userprofile)
-            amount = request.data.get('amount')
-            currency = request.data.get('currency', 'usd')
-            stripe_token = request.data.get('stripe_token')
-
-            if not amount or not stripe_token:
-                return Response({
-                    'success': False,
-                    'errors': {'amount': ['Это поле обязательно'], 'stripe_token': ['Токен карты обязателен']}
-                }, status=status.HTTP_400_BAD_REQUEST)
-
-            # Валидация суммы
-            try:
-                amount_float = float(amount)
-                if amount_float <= 0:
-                    return Response({
-                        'success': False,
-                        'errors': {'amount': ['Сумма должна быть положительной']}
-                    }, status=status.HTTP_400_BAD_REQUEST)
-            except (ValueError, TypeError):
-                return Response({
-                    'success': False,
-                    'errors': {'amount': ['Сумма должна быть числом']}
-                }, status=status.HTTP_400_BAD_REQUEST)
-
-            # Создание платежного намерения через Stripe
-            intent = stripe.PaymentIntent.create(
-                amount=int(amount_float * 100),  # Конвертация в центы
-                currency=currency,
-                payment_method_data={
-                    "type": "card",
-                    "card": {
-                        "token": stripe_token
-                    }
-                },
-                confirmation_method='manual',
-                confirm=True,
-                description=f"Оплата за {joinclub_instance.schedule.title}",
-                return_url="http://127.0.0.1:8000/swagger/"
-            )
-            # Проверка статуса платежа
-            if intent.status == 'succeeded':
-                payment_data = {
-                    'joinclub': joinclub_id,  # Передаем ID вместо объекта
-                    'amount': amount_float,
-                    'stripe_payment_intent_id': intent.id
-                }
-                serializer = PaymentSerializer(data=payment_data)
-                if serializer.is_valid():
-                    payment = serializer.save()
-                    return Response({
-                        'success': True,
-                        'message': 'Оплата успешно завершена',
-                        'data': serializer.data,
-                        'clientSecret': intent.client_secret
-                    }, status=status.HTTP_201_CREATED)
-                return Response({
-                    'success': False,
-                    'errors': serializer.errors
-                }, status=status.HTTP_400_BAD_REQUEST)
-            else:
-                return Response({
-                    'success': False,
-                    'message': f'Платеж не завершен. Статус: {intent.status}. Попробуйте еще раз.'
-                }, status=status.HTTP_400_BAD_REQUEST)
-        except Joinclub.DoesNotExist:
-            return Response({
-                'success': False,
-                'message': 'Запись Joinclub не найдена'
-            }, status=status.HTTP_404_NOT_FOUND)
-        except stripe.error.StripeError as e:
-            logger.error("Stripe error: %s", str(e))
-            return Response({
-                'success': False,
-                'errors': {'stripe': [str(e)]}
-            }, status=status.HTTP_400_BAD_REQUEST)
-        except Exception as e:
-            logger.error("Unexpected error: %s", str(e))
-            return Response({
-                'success': False,
-                'errors': {'general': ['Произошла ошибка на сервере']}
-            }, status=status.HTTP_400_BAD_REQUEST)
-
-
 class AttendanceView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -1209,33 +1005,27 @@ class AttendanceView(APIView):
             404: 'Запись на занятие не найдена'
         }
     )
-    def get(self, request, joinclub_id):
-        joinclub = get_object_or_404(Joinclub, pk=joinclub_id, user__user=request.user)
-        summary = joinclub.get_attendance_summary
-        return Response({"success": True, "data": summary}, status=status.HTTP_200_OK)
+    def get(self, request):
+        try:
+            user_profile = request.user.userprofile
+        except UserProfile.DoesNotExist:
+            return Response({
+                'success': False,
+                'message': 'Профиль пользователя не найден'
+            }, status=status.HTTP_404_NOT_FOUND)
 
-    @swagger_auto_schema(
-        tags=['✅ Посещаемость'],
-        operation_summary="Отметить посещаемость",
-        operation_description="""
-        Создаёт новую запись о посещении для конкретного занятия. Доступно только для администраторов.
-        """,
-        request_body=AttendanceSerializer,
-        responses={
-            201: openapi.Response('Посещение отмечено', AttendanceSerializer),
-            400: 'Ошибка валидации',
-            401: 'Не авторизован',
-            403: 'Нет прав доступа'
-        }
-    )
-    def post(self, request, joinclub_id):
-        if not request.user.is_staff:
-            return Response({"detail": "У вас нет прав для выполнения этого действия."},
-                            status=status.HTTP_403_FORBIDDEN)
+        joinclubs = Joinclub.objects.filter(user=user_profile)
 
-        joinclub = get_object_or_404(Joinclub, pk=joinclub_id)
-        serializer = AttendanceSerializer(data=request.data, context={'joinclub': joinclub})
-        if serializer.is_valid():
-            serializer.save()
-            return Response({"success": True, "data": serializer.data}, status=status.HTTP_201_CREATED)
-        return Response({"success": False, "errors": serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
+        attendance_data = []
+        for joinclub in joinclubs:
+            summary = joinclub.get_attendance_summary
+            attendance_data.append({
+                'joinclub_id': joinclub.id,
+                'title': joinclub.schedule.title,
+                'summary': summary
+            })
+
+        return Response({
+            'success': True,
+            'data': attendance_data
+        }, status=status.HTTP_200_OK)
