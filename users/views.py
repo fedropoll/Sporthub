@@ -397,11 +397,13 @@ class ResendCodeView(APIView):
 
 
 # -------------------- RESOURCE VIEWS --------------------
-class UserProfileViewSet(viewsets.ViewSet):
+class UserProfileViewSet(viewsets.ModelViewSet):
+    queryset = UserProfile.objects.all()
+    serializer_class = UserProfileSerializer
     permission_classes = [IsAuthenticated]
 
     @swagger_auto_schema(
-        tags=['👤Профиль пользователя'],
+        tags=['👤 Профиль пользователя'],
         operation_summary="Получить данные профиля пользователя",
         operation_description="""
         Возвращает данные профиля (UserProfile) текущего аутентифицированного пользователя.
@@ -413,10 +415,10 @@ class UserProfileViewSet(viewsets.ViewSet):
             404: openapi.Response('Профиль не найден', examples={'application/json': {'success': False, 'message': 'Профиль не найден'}})
         }
     )
-    def get(self, request):
+    def retrieve(self, request, pk=None):
         try:
-            user_profile = request.user.profile
-            serializer = UserProfileSerializer(user_profile)
+            user_profile = get_object_or_404(UserProfile, user=request.user)
+            serializer = self.get_serializer(user_profile)
             return Response({
                 'success': True,
                 'data': serializer.data
@@ -428,7 +430,7 @@ class UserProfileViewSet(viewsets.ViewSet):
             }, status=status.HTTP_404_NOT_FOUND)
 
     @swagger_auto_schema(
-        tags=['👤Профиль пользователя'],
+        tags=['👤 Профиль пользователя'],
         operation_summary="Редактировать данные профиля пользователя",
         operation_description="""
         Обновляет данные профиля (UserProfile) текущего аутентифицированного пользователя.
@@ -443,10 +445,10 @@ class UserProfileViewSet(viewsets.ViewSet):
             404: openapi.Response('Профиль не найден', examples={'application/json': {'success': False, 'message': 'Профиль не найден'}})
         }
     )
-    def put(self, request):
+    def update(self, request, pk=None):
         try:
-            user_profile = UserProfile.objects.get(user=request.user)
-            serializer = UserProfileSerializer(user_profile, data=request.data, partial=True)
+            user_profile = get_object_or_404(UserProfile, user=request.user)
+            serializer = self.get_serializer(user_profile, data=request.data, partial=True)
             if serializer.is_valid():
                 serializer.save()
                 return Response({
@@ -464,6 +466,9 @@ class UserProfileViewSet(viewsets.ViewSet):
                 'message': 'Профиль не найден'
             }, status=status.HTTP_404_NOT_FOUND)
 
+
+    def get_queryset(self):
+        return UserProfile.objects.filter(user=self.request.user)
 
 class ClientViewSet(viewsets.ModelViewSet):
     """
@@ -936,7 +941,7 @@ class JoinclubView(APIView):
     )
     def get(self, request):
         try:
-            user_profile = request.user.userprofile
+            user_profile = get_object_or_404(UserProfile, user=request.user)
         except ObjectDoesNotExist:
             return Response({
                 'success': False,
@@ -994,34 +999,44 @@ class AttendanceView(APIView):
 
     @swagger_auto_schema(
         tags=['✅ Посещаемость'],
-        operation_summary="Получить статистику посещаемости",
+        operation_summary="Получить статистику посещаемости для всех занятий пользователя",
         operation_description="""
-        Возвращает сводку посещаемости для конкретной записи на занятие (`joinclub_id`).
+        Возвращает сводку посещаемости для всех занятий, на которые записан текущий
+        аутентифицированный пользователь.
         """,
         responses={
-            200: openapi.Response('Сводка посещаемости', examples={
-                'application/json': {'success': True, 'data': {'present': 10, 'absent': 2, 'total': 12}}}),
-            401: 'Не авторизован',
-            404: 'Запись на занятие не найдена'
+            200: openapi.Response('Список сводок посещаемости', examples={
+                'application/json': {
+                    'success': True,
+                    'data': [
+                        {'joinclub_id': 1, 'title': 'Волейбол', 'summary': {'present': 10, 'absent': 2, 'total': 12}},
+                        {'joinclub_id': 2, 'title': 'Таэквондо', 'summary': {'present': 15, 'absent': 0, 'total': 15}}
+                    ]
+                }
+            }),
+            401: 'Не авторизован'
         }
     )
+    # Удаляем joinclub_id из параметров метода
     def get(self, request):
         try:
-            user_profile = request.user.userprofile
+            user_profile = get_object_or_404(UserProfile, user=request.user)
         except UserProfile.DoesNotExist:
             return Response({
                 'success': False,
                 'message': 'Профиль пользователя не найден'
             }, status=status.HTTP_404_NOT_FOUND)
 
+        # Получаем все записи (joinclub) для текущего пользователя
         joinclubs = Joinclub.objects.filter(user=user_profile)
 
         attendance_data = []
         for joinclub in joinclubs:
+            # Для каждой записи получаем сводку
             summary = joinclub.get_attendance_summary
             attendance_data.append({
                 'joinclub_id': joinclub.id,
-                'title': joinclub.schedule.title,
+                'title': joinclub.schedule.title,  # Добавляем название для удобства
                 'summary': summary
             })
 

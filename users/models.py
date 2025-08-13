@@ -119,11 +119,15 @@ class Joinclub(models.Model):
     class Meta:
         unique_together = ('user', 'schedule')
 
+    def __str__(self):
+        return f"{self.user} - {self.schedule.title} ({self.age_group})"
+
+    # Correct placement of the attendance summary method
     @property
     def get_attendance_summary(self):
         one_month_ago = timezone.now() - timedelta(days=30)
-        # Исправлено: используем 'self' вместо 'self.joinclub'
-        attendances = Attendance.objects.filter(joinclub=self, attendance_date__gte=one_month_ago)
+        # Use the reverse relationship to get all attendance records for this Joinclub instance
+        attendances = self.attendance_set.filter(attendance_date__gte=one_month_ago)
         present_count = attendances.filter(is_present=True).count()
         absent_count = attendances.filter(is_present=False).count()
         return {
@@ -131,8 +135,6 @@ class Joinclub(models.Model):
             'absent': absent_count,
             'total': present_count + absent_count
         }
-    def __str__(self):
-        return f"{self.user} - {self.schedule.title} ({self.age_group})"
 
 # --- Тренеры (Trainer) ---
 class Trainer(models.Model):

@@ -16,7 +16,6 @@ router.register(r'trainers', TrainerViewSet)
 router.register(r'ads', AdViewSet)
 router.register(r'reviews', ReviewViewSet)
 router.register(r'clients', ClientViewSet, basename='clients')
-router.register(r'profile', UserProfileViewSet, basename='profile')
 router.register(r'notifications', NotificationViewSet, basename='notification')
 
 
@@ -32,10 +31,10 @@ urlpatterns = [
     path('schedules/', include([
         path('', ClassScheduleView.as_view(), name='class_schedule'),
         path('join/', JoinclubView.as_view(), name='joinclub'),
-        path('attendance/<int:joinclub_id>/', AttendanceView.as_view(), name='attendance_view'),
+        path('attendance/', AttendanceView.as_view(), name='attendance_view'),
     ])),
     path('', include(router.urls)),
+    path('profile/', UserProfileViewSet.as_view({'get': 'retrieve', 'put': 'update'}), name='profile'),
 
-    # Профиль без {id}
-    path('profile/', UserProfileViewSet.as_view({'get': 'list', 'put': 'update'})),
+
 ] + router.urls

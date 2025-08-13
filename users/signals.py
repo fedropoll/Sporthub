@@ -1,38 +1,18 @@
+# users/signals.py
 from django.db.models.signals import post_save
-from django.contrib.auth.models import User
 from django.dispatch import receiver
-from .models import Review, Notification, UserProfile
+from django.contrib.auth.models import User
+from .models import UserProfile # Make sure to import your UserProfile model
 
-# Сигнал для создания уведомления при добавлении нового отзыва
-@receiver(post_save, sender=Review)
-def create_review_notification(sender, instance, created, **kwargs):
-    """
-    Создает уведомление, когда пользователь оставляет новый отзыв.
-    """
-    if created:
-        message = f"Новый отзыв от {instance.user.username}."
-        Notification.objects.create(
-            user=instance.user,
-            message=message,
-            type='review'
-        )
-
-# Сигнал для создания профиля пользователя и уведомления о регистрации
 @receiver(post_save, sender=User)
-def create_user_profile_and_notification(sender, instance, created, **kwargs):
-    """
-    Автоматически создает профиль UserProfile и уведомление о регистрации
-    для каждого нового пользователя.
-    """
+def create_user_profile(sender, instance, created, **kwargs):
     if created:
-        # Создаем профиль пользователя UserProfile
-        # Правильно обрабатываем возвращаемое значение get_or_create
-        user_profile, created = UserProfile.objects.get_or_create(user=instance)
+        UserProfile.objects.create(user=instance)
 
-        # Создаем уведомление о регистрации
-        message = f"Новый пользователь {instance.username} зарегистрировался."
-        Notification.objects.create(
-            user=instance,
-            message=message,
-            type='registration'
-        )
+@receiver(post_save, sender=User)
+def save_user_profile(sender, instance, **kwargs):
+    try:
+        instance.userprofile.save()
+    except UserProfile.DoesNotExist:
+        # Handle cases where the UserProfile might be missing for existing users
+        UserProfile.objects.create(user=instance)
