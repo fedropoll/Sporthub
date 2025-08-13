@@ -1017,7 +1017,6 @@ class AttendanceView(APIView):
             401: 'Не авторизован'
         }
     )
-    # Удаляем joinclub_id из параметров метода
     def get(self, request):
         try:
             user_profile = get_object_or_404(UserProfile, user=request.user)
