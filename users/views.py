@@ -1018,24 +1018,21 @@ class AttendanceView(APIView):
         }
     )
     def get(self, request):
-        try:
-            user_profile = get_object_or_404(UserProfile, user=request.user)
-        except UserProfile.DoesNotExist:
-            return Response({
-                'success': False,
-                'message': 'Профиль пользователя не найден'
-            }, status=status.HTTP_404_NOT_FOUND)
+        # Используем get_object_or_404 для получения профиля.
+        # Если профиль не существует, DRF автоматически вернет 404.
+        user_profile = get_object_or_404(UserProfile, user=request.user)
 
         # Получаем все записи (joinclub) для текущего пользователя
+        # Запрос к базе данных выполняется один раз
         joinclubs = Joinclub.objects.filter(user=user_profile)
 
         attendance_data = []
         for joinclub in joinclubs:
-            # Для каждой записи получаем сводку
+            # Для каждой записи получаем сводку, используя уже существующий метод
             summary = joinclub.get_attendance_summary
             attendance_data.append({
                 'joinclub_id': joinclub.id,
-                'title': joinclub.schedule.title,  # Добавляем название для удобства
+                'title': joinclub.schedule.title,
                 'summary': summary
             })
 
