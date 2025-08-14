@@ -11,12 +11,12 @@ load_dotenv()
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 # Quick-start development settings - unsuitable for production
-SECRET_KEY = '7#y!_6%x1mo%j8$&=%p18_0lep+#8tg3y-re6a*te&jc0zm-r='
+SECRET_KEY = os.getenv('SECRET_KEY')
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = os.getenv('DEBUG', 'False') == 'True'
 
-ALLOWED_HOSTS = ['127.0.0.1', 'localhost']
+ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', 'localhost').split(',')
 if DEBUG:
     ALLOWED_HOSTS = ['*']
 
@@ -72,8 +72,16 @@ TEMPLATES = [
 WSGI_APPLICATION = 'Sporthub.wsgi.application'
 
 # Database
-DATABASE_URL = os.getenv('DATABASE_URL', f'sqlite:///{BASE_DIR / "db.sqlite3"}')
-DATABASES = {'default': dj_database_url.config(default=DATABASE_URL, conn_max_age=600)}
+DATABASES = {
+    'default': {
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': 'sporthub_db',
+        'USER': 'admin',
+        'PASSWORD': 'admin123',  # используйте простые символы
+        'HOST': 'localhost',
+        'PORT': '5432',
+    }
+}
 
 # Password validation
 AUTH_PASSWORD_VALIDATORS = [
