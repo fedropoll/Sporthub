@@ -4,6 +4,9 @@ from dotenv import load_dotenv
 from pathlib import Path
 from datetime import timedelta
 
+os.environ['PYTHONIOENCODING'] = 'utf-8'
+os.environ['LANG'] = 'en_US.UTF-8'
+
 # Загружаем переменные окружения из .env в самом начале
 load_dotenv()
 
@@ -13,12 +16,15 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # Quick-start development settings - unsuitable for production
 SECRET_KEY = os.getenv('SECRET_KEY', 'qw5zex6rt7yv8buio[poiuyftcuyvgihbonjkml')
 
-# SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = os.getenv('DEBUG', 'False') == 'True'
+# # SECURITY WARNING: don't run with debug turned on in production!
+# DEBUG = os.getenv('DEBUG', 'False') == 'True'
+#
+# ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', 'localhost').split(',')
+# if DEBUG:
+#     ALLOWED_HOSTS = ['*']
 
-ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', 'localhost').split(',')
-if DEBUG:
-    ALLOWED_HOSTS = ['*']
+DEBUG = True
+ALLOWED_HOSTS = ['localhost', '127.0.0.1']
 
 # Application definition
 INSTALLED_APPS = [
@@ -77,8 +83,8 @@ DATABASES = {
         'ENGINE': 'django.db.backends.postgresql',
         'NAME': 'sporthub_db',
         'USER': 'admin',
-        'PASSWORD': 'admin123',  # используйте простые символы
-        'HOST': 'localhost',
+        'PASSWORD': 'admin',
+        'HOST': '127.0.0.1',
         'PORT': '5432',
     }
 }
