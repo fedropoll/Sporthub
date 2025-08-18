@@ -6,7 +6,7 @@ from .models import UserProfile
 @receiver(post_save, sender=User)
 def create_or_save_user_profile(sender, instance, created, **kwargs):
     """
-    Создаёт UserProfile для нового пользователя или сохраняет существующий профиль.
+        Создаёт UserProfile для нового пользователя или сохраняет существующий профиль.
     """
     if created:
         # Создаём профиль для нового пользователя
