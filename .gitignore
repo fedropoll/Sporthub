@@ -17,10 +17,6 @@ db.sqlite3
 # Логи
 *.log
 
-# Файлы миграций, которые часто создаются автоматически
-*/migrations/*.py
-*/migrations/*.pyc
-!*/migrations/__init__.py
 
 # Статические файлы, если собираешь в отдельную папку
 staticfiles/
