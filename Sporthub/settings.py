@@ -4,9 +4,6 @@ from dotenv import load_dotenv
 from pathlib import Path
 from datetime import timedelta
 
-os.environ['PYTHONIOENCODING'] = 'utf-8'
-os.environ['LANG'] = 'en_US.UTF-8'
-
 # Загружаем переменные окружения из .env в самом начале
 load_dotenv()
 
