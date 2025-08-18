@@ -3,17 +3,21 @@ import dj_database_url
 from dotenv import load_dotenv
 from pathlib import Path
 from datetime import timedelta
-
-# Загружаем переменные окружения из .env
 load_dotenv()
-
-# Build paths inside the project
-BASE_DIR = Path(__file__).resolve().parent.parent
-
-# Безопасность и настройки
-SECRET_KEY = os.getenv('SECRET_KEY', 'your-default-secret-key')
+SECRET_KEY = os.getenv('SECRET_KEY')
 DEBUG = os.getenv('DEBUG', 'False') == 'True'
 ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',')
+
+DATABASES = {
+    'default': dj_database_url.config(default=os.getenv('DATABASE_URL'))
+}
+
+EMAIL_HOST = os.getenv('EMAIL_HOST')
+EMAIL_PORT = os.getenv('EMAIL_PORT')
+EMAIL_HOST_USER = os.getenv('EMAIL_HOST_USER')
+EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD')
+EMAIL_USE_TLS = os.getenv('EMAIL_USE_TLS', 'False') == 'True'
+DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL')
 # Application definition
 INSTALLED_APPS = [
     'django.contrib.admin',
@@ -61,14 +65,7 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'Sporthub.wsgi.application'
 
-# Настройки базы данных
-DATABASES = {
-    'default': dj_database_url.config(
-        default=os.getenv('DATABASE_URL', 'postgres://admin:admin@127.0.0.1:5432/sporthub_db'),
-        conn_max_age=600,
-        conn_health_checks=True
-    )
-}
+
 
 # Password validation
 AUTH_PASSWORD_VALIDATORS = [
