@@ -4,25 +4,16 @@ from dotenv import load_dotenv
 from pathlib import Path
 from datetime import timedelta
 
-# Загружаем переменные окружения из .env в самом начале
+# Загружаем переменные окружения из .env
 load_dotenv()
 
-# Build paths inside the project like this: BASE_DIR / 'subdir'.
+# Build paths inside the project
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-# Quick-start development settings - unsuitable for production
-SECRET_KEY = os.getenv('SECRET_KEY', 'qw5zex6rt7yv8buio[poiuyftcuyvgihbonjkml')
-
-# # SECURITY WARNING: don't run with debug turned on in production!
-# DEBUG = os.getenv('DEBUG', 'False') == 'True'
-#
-# ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', 'localhost').split(',')
-# if DEBUG:
-#     ALLOWED_HOSTS = ['*']
-
-DEBUG = True
-ALLOWED_HOSTS = ['localhost', '127.0.0.1']
-
+# Безопасность и настройки
+SECRET_KEY = os.getenv('SECRET_KEY', 'your-default-secret-key')
+DEBUG = os.getenv('DEBUG', 'False') == 'True'
+ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',')
 # Application definition
 INSTALLED_APPS = [
     'django.contrib.admin',
@@ -31,14 +22,10 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-
-    # Third-party apps
     'rest_framework',
     'drf_yasg',
     'django_filters',
     'rest_framework_simplejwt',
-
-    # My apps
     'main',
     'users.apps.UsersConfig',
 ]
@@ -74,16 +61,13 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'Sporthub.wsgi.application'
 
-# Database
+# Настройки базы данных
 DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'sporthub_db',
-        'USER': 'admin',
-        'PASSWORD': 'admin',
-        'HOST': '127.0.0.1',
-        'PORT': '5432',
-    }
+    'default': dj_database_url.config(
+        default=os.getenv('DATABASE_URL', 'postgres://admin:admin@127.0.0.1:5432/sporthub_db'),
+        conn_max_age=600,
+        conn_health_checks=True
+    )
 }
 
 # Password validation
@@ -113,7 +97,7 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 # REST Framework settings
 REST_FRAMEWORK = {
     'DEFAULT_PERMISSION_CLASSES': [
-        'rest_framework.permissions.AllowAny',
+        'rest_framework.permissions.AllowAny',  # Изменено с IsAuthenticated
     ],
     'DEFAULT_RENDERER_CLASSES': [
         'rest_framework.renderers.JSONRenderer',
