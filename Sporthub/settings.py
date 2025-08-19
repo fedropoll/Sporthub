@@ -82,10 +82,15 @@ TIME_ZONE = 'UTC'
 USE_I18N = True
 USE_TZ = True
 
-# Static files (CSS, JavaScript, Images)
-STATIC_URL = 'static/'
+# STATIC (CSS, JS, Images)
+STATIC_URL = '/static/'   # 👈 обязательно со слэшем в начале и конце
+STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
+
+# MEDIA (загрузки пользователей)
 MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+
+# WhiteNoise (для продакшена на Render)
 STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
 # Default primary key field type
