@@ -3,7 +3,6 @@ import dj_database_url
 from dotenv import load_dotenv
 from pathlib import Path
 from datetime import timedelta
-import socket
 
 load_dotenv()
 
@@ -14,21 +13,28 @@ DEBUG = os.getenv('DEBUG', 'False') == 'True'
 
 # Настройки хоста
 ALLOWED_HOSTS = os.getenv("ALLOWED_HOSTS", "localhost,127.0.0.1").split(",")
-
-# Автоматическое добавление Render хоста
-RENDER_EXTERNAL_HOSTNAME = os.environ.get('RENDER_EXTERNAL_HOSTNAME')
+RENDER_EXTERNAL_HOSTNAME = os.getenv('RENDER_EXTERNAL_HOSTNAME')
 if RENDER_EXTERNAL_HOSTNAME:
     ALLOWED_HOSTS.append(RENDER_EXTERNAL_HOSTNAME)
 
 # Настройки базы данных
-DATABASES = {
-    'default': dj_database_url.config(
-        default=os.getenv('DATABASE_URL'),
+DATABASE_URL = os.getenv('DATABASE_URL')
+DATABASES = {}
+
+if DATABASE_URL:
+    # Если DATABASE_URL есть, используем его
+    DATABASES['default'] = dj_database_url.parse(
+        DATABASE_URL,
         conn_max_age=600,
         conn_health_checks=True,
         ssl_require=not DEBUG
     )
-}
+else:
+    # Если DATABASE_URL нет, используем SQLite по умолчанию
+    DATABASES['default'] = {
+        'ENGINE': 'django.db.backends.sqlite3',
+        'NAME': BASE_DIR / 'db.sqlite3',
+    }
 
 # Приложения
 INSTALLED_APPS = [
@@ -162,7 +168,7 @@ if not DEBUG:
     SECURE_SSL_REDIRECT = True
     SESSION_COOKIE_SECURE = True
     CSRF_COOKIE_SECURE = True
-    SECURE_HSTS_SECONDS = 31536000  # 1 year
+    SECURE_HSTS_SECONDS = 31536000
     SECURE_HSTS_INCLUDE_SUBDOMAINS = True
     SECURE_HSTS_PRELOAD = True
     SECURE_CONTENT_TYPE_NOSNIFF = True
