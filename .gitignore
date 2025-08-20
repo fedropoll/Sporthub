@@ -3,28 +3,26 @@ __pycache__/
 *.py[cod]
 *$py.class
 
-# Виртуальное окружение (название может отличаться)
+# Виртуальное окружение
 venv/
 env/
 .venv/
 
 # Файл с секретами и конфигурацией окружения
 .env
+local_settings.py
 
-# База данных SQLite (если не хочешь хранить её в репозитории)
+# База данных SQLite
 db.sqlite3
 
 # Логи
 *.log
 
-
-# Статические файлы, если собираешь в отдельную папку
+# Статические файлы Django
 staticfiles/
 
-# PyCharm IDE
+# IDE и редакторы
 .idea/
-
-# VS Code
 .vscode/
 
 # MacOS системные файлы
@@ -62,14 +60,5 @@ htmlcov/
 # mypy cache
 .mypy_cache/
 
-# celery beat schedule file
+# Celery beat schedule file
 celerybeat-schedule
-
-# Django stuff:
-local_settings.py
-db.sqlite3/
-=1.21.7
-=1.21.10
-db.sqlite3/
-
-
