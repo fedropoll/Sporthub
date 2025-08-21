@@ -1,33 +1,40 @@
 import os
-import dj_database_url
-from dotenv import load_dotenv
 from pathlib import Path
 from datetime import timedelta
+import dj_database_url
+from dotenv import load_dotenv
 
-load_dotenv()
-
-# Базовые настройки
+# Загружаем .env из корня проекта
 BASE_DIR = Path(__file__).resolve().parent.parent
+load_dotenv(BASE_DIR / ".env")
+
+# ======================
+# Основные настройки
+# ======================
 SECRET_KEY = os.getenv('SECRET_KEY', 'django-insecure-your-default-key-here')
 DEBUG = os.getenv('DEBUG', 'False') == 'True'
 
-# Настройки хоста
+# Хосты
 ALLOWED_HOSTS = os.getenv("ALLOWED_HOSTS", "localhost,127.0.0.1").split(",")
 RENDER_EXTERNAL_HOSTNAME = os.getenv('RENDER_EXTERNAL_HOSTNAME')
 if RENDER_EXTERNAL_HOSTNAME:
     ALLOWED_HOSTS.append(RENDER_EXTERNAL_HOSTNAME)
 
-# Настройки базы данных (PostgreSQL)
+# ======================
+# Настройки базы данных
+# ======================
 DATABASES = {
     'default': dj_database_url.config(
-        default=f"postgres://{os.getenv('DB_USER','postgres')}:{os.getenv('DB_PASSWORD','password')}@{os.getenv('DB_HOST','localhost')}:{os.getenv('DB_PORT','5432')}/{os.getenv('DB_NAME','sporthub')}",
+        default=f"postgres://{os.getenv('DB_USER','sporthub_user')}:{os.getenv('DB_PASSWORD','MyStrongPass123!')}@{os.getenv('DB_HOST','localhost')}:{os.getenv('DB_PORT','5432')}/{os.getenv('DB_NAME','sporthub_db')}",
         conn_max_age=600,
         conn_health_checks=True,
         ssl_require=not DEBUG
     )
 }
 
+# ======================
 # Приложения
+# ======================
 INSTALLED_APPS = [
     'django.contrib.admin',
     'django.contrib.auth',
@@ -47,7 +54,9 @@ INSTALLED_APPS = [
     'users.apps.UsersConfig',
 ]
 
+# ======================
 # Middleware
+# ======================
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'whitenoise.middleware.WhiteNoiseMiddleware',
@@ -61,7 +70,9 @@ MIDDLEWARE = [
 
 ROOT_URLCONF = 'Sporthub.urls'
 
+# ======================
 # Шаблоны
+# ======================
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
@@ -80,7 +91,9 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'Sporthub.wsgi.application'
 
+# ======================
 # Валидация паролей
+# ======================
 AUTH_PASSWORD_VALIDATORS = [
     {'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator'},
     {'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator'},
@@ -88,22 +101,27 @@ AUTH_PASSWORD_VALIDATORS = [
     {'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator'},
 ]
 
+# ======================
 # Интернационализация
+# ======================
 LANGUAGE_CODE = 'ru-ru'
 TIME_ZONE = 'UTC'
 USE_I18N = True
 USE_TZ = True
 
-# Статические файлы
+# ======================
+# Статические и медиа файлы
+# ======================
 STATIC_URL = '/static/'
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
-# Медиа файлы
 MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
+# ======================
 # REST Framework
+# ======================
 REST_FRAMEWORK = {
     'DEFAULT_PERMISSION_CLASSES': [
         'rest_framework.permissions.AllowAny',
@@ -122,7 +140,9 @@ REST_FRAMEWORK = {
     ],
 }
 
+# ======================
 # JWT Настройки
+# ======================
 SIMPLE_JWT = {
     'ACCESS_TOKEN_LIFETIME': timedelta(minutes=15),
     'REFRESH_TOKEN_LIFETIME': timedelta(days=7),
@@ -130,7 +150,9 @@ SIMPLE_JWT = {
     'AUTH_TOKEN_CLASSES': ('rest_framework_simplejwt.tokens.RefreshToken',),
 }
 
+# ======================
 # Swagger
+# ======================
 SWAGGER_SETTINGS = {
     'SECURITY_DEFINITIONS': {
         'Bearer': {
@@ -144,16 +166,9 @@ SWAGGER_SETTINGS = {
     'PERSIST_AUTH': True,
 }
 
-# Email (раскомментируйте при необходимости)
-# EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
-# EMAIL_HOST = os.getenv('EMAIL_HOST')
-# EMAIL_PORT = os.getenv('EMAIL_PORT')
-# EMAIL_USE_TLS = os.getenv('EMAIL_USE_TLS', 'False') == 'True'
-# EMAIL_HOST_USER = os.getenv("EMAIL_HOST_USER")
-# EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD")
-# DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL")
-
+# ======================
 # Безопасность для production
+# ======================
 if not DEBUG:
     SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
     SECURE_SSL_REDIRECT = True
@@ -166,7 +181,9 @@ if not DEBUG:
     SECURE_BROWSER_XSS_FILTER = True
     X_FRAME_OPTIONS = 'DENY'
 
+# ======================
 # Логирование
+# ======================
 LOGGING = {
     'version': 1,
     'disable_existing_loggers': False,
