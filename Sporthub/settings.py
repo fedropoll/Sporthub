@@ -11,7 +11,7 @@ load_dotenv(BASE_DIR / ".env")
 # ======================
 # Основные настройки
 # ======================
-SECRET_KEY = os.getenv('SECRET_KEY', 'django-insecure-your-default-key-here')
+SECRET_KEY = os.getenv('SECRET_KEY', 'django-insecure-fallback-key-for-dev')
 DEBUG = os.getenv('DEBUG', 'False') == 'True'
 
 # Хосты
@@ -21,16 +21,27 @@ if RENDER_EXTERNAL_HOSTNAME:
     ALLOWED_HOSTS.append(RENDER_EXTERNAL_HOSTNAME)
 
 # ======================
-# Настройки базы данных
+# Настройки базы данных (ИСПРАВЛЕННЫЕ)
 # ======================
 DATABASES = {
-    'default': dj_database_url.config(
-        default=f"postgres://{os.getenv('DB_USER','sporthub_user')}:{os.getenv('DB_PASSWORD','MyStrongPass123!')}@{os.getenv('DB_HOST','localhost')}:{os.getenv('DB_PORT','5432')}/{os.getenv('DB_NAME','sporthub_db')}",
+    'default': {
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': os.getenv('DB_NAME', 'sporthub_db'),
+        'USER': os.getenv('DB_USER', 'sporthub_user'),
+        'PASSWORD': os.getenv('DB_PASSWORD', 'MyStrongPass123!'),
+        'HOST': os.getenv('DB_HOST', 'localhost'),
+        'PORT': os.getenv('DB_PORT', '5432'),
+    }
+}
+
+# Для внешних URL базы данных (если понадобится)
+if os.getenv('DATABASE_URL'):
+    DATABASES['default'] = dj_database_url.config(
+        default=os.getenv('DATABASE_URL'),
         conn_max_age=600,
         conn_health_checks=True,
         ssl_require=not DEBUG
     )
-}
 
 # ======================
 # Приложения
@@ -191,10 +202,22 @@ LOGGING = {
         'console': {
             'class': 'logging.StreamHandler',
         },
+        'file': {
+            'class': 'logging.FileHandler',
+            'filename': os.path.join(BASE_DIR, 'django.log'),
+            'level': 'ERROR',
+        },
     },
     'root': {
-        'handlers': ['console'],
+        'handlers': ['console', 'file'],
         'level': 'WARNING',
+    },
+    'loggers': {
+        'django.db': {
+            'handlers': ['console', 'file'],
+            'level': 'ERROR',
+            'propagate': False,
+        },
     },
 }
 
