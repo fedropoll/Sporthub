@@ -17,24 +17,15 @@ RENDER_EXTERNAL_HOSTNAME = os.getenv('RENDER_EXTERNAL_HOSTNAME')
 if RENDER_EXTERNAL_HOSTNAME:
     ALLOWED_HOSTS.append(RENDER_EXTERNAL_HOSTNAME)
 
-# Настройки базы данных
-DATABASE_URL = os.getenv('DATABASE_URL')
-DATABASES = {}
-
-if DATABASE_URL:
-    # Если DATABASE_URL есть, используем его
-    DATABASES['default'] = dj_database_url.parse(
-        DATABASE_URL,
+# Настройки базы данных (PostgreSQL)
+DATABASES = {
+    'default': dj_database_url.config(
+        default=f"postgres://{os.getenv('DB_USER','postgres')}:{os.getenv('DB_PASSWORD','password')}@{os.getenv('DB_HOST','localhost')}:{os.getenv('DB_PORT','5432')}/{os.getenv('DB_NAME','sporthub')}",
         conn_max_age=600,
         conn_health_checks=True,
         ssl_require=not DEBUG
     )
-else:
-    # Если DATABASE_URL нет, используем SQLite по умолчанию
-    DATABASES['default'] = {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
-    }
+}
 
 # Приложения
 INSTALLED_APPS = [
