@@ -23,18 +23,21 @@ if RENDER_EXTERNAL_HOSTNAME:
 # ======================
 # Настройки базы данных (ИСПРАВЛЕННЫЕ)
 # ======================
+# ======================
+# Настройки базы данных
+# ======================
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': os.getenv('DB_NAME', 'sporthub_db'),
-        'USER': os.getenv('DB_USER', 'sporthub_user'),
-        'PASSWORD': os.getenv('DB_PASSWORD', 'MyStrongPass123!'),
-        'HOST': os.getenv('DB_HOST', 'localhost'),
-        'PORT': os.getenv('DB_PORT', '5432'),
+        'NAME': os.getenv('DB_NAME', 'sporthub_db2'),   # имя вашей базы
+        'USER': os.getenv('DB_USER', 'raha'),           # пользователь
+        'PASSWORD': os.getenv('DB_PASSWORD', 'password'),  # пароль
+        'HOST': os.getenv('DB_HOST', '127.0.0.1'),      # хост
+        'PORT': os.getenv('DB_PORT', '5432'),           # порт
     }
 }
 
-# Для внешних URL базы данных (если понадобится)
+# Если есть DATABASE_URL (например, в продакшене на Render/Heroku) — он будет приоритетным
 if os.getenv('DATABASE_URL'):
     DATABASES['default'] = dj_database_url.config(
         default=os.getenv('DATABASE_URL'),
