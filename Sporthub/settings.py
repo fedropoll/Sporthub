@@ -21,9 +21,6 @@ if RENDER_EXTERNAL_HOSTNAME:
     ALLOWED_HOSTS.append(RENDER_EXTERNAL_HOSTNAME)
 
 # ======================
-# Настройки базы данных (ИСПРАВЛЕННЫЕ)
-# ======================
-# ======================
 # Настройки базы данных
 # ======================
 DATABASES = {
@@ -36,16 +33,6 @@ DATABASES = {
         'PORT': os.getenv('DB_PORT', '5432'),           # порт
     }
 }
-
-# Если есть DATABASE_URL (например, в продакшене на Render/Heroku) — он будет приоритетным
-if os.getenv('DATABASE_URL'):
-    DATABASES['default'] = dj_database_url.config(
-        default=os.getenv('DATABASE_URL'),
-        conn_max_age=600,
-        conn_health_checks=True,
-        ssl_require=not DEBUG
-    )
-
 # ======================
 # Приложения
 # ======================
