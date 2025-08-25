@@ -1,0 +1,31 @@
+version: '3.9'
+
+services:
+  web:
+    build: .
+    container_name: sporthub_web
+    command: python manage.py runserver 0.0.0.0:8083
+    volumes:
+      - .:/app
+    ports:
+      - "8083:8083"
+    depends_on:
+      - db
+    env_file:
+      - .env
+
+  db:
+    image: postgres:15
+    container_name: sporthub_db
+    restart: always
+    environment:
+      POSTGRES_DB: sporthub_db
+      POSTGRES_USER: sporthub_user
+      POSTGRES_PASSWORD: MyStrongPass123!
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+volumes:
+  postgres_data:

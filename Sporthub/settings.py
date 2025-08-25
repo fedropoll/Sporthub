@@ -1,36 +1,54 @@
 import os
-import dj_database_url
-from dotenv import load_dotenv
 from pathlib import Path
 from datetime import timedelta
-import socket
+import dj_database_url
+from dotenv import load_dotenv
 
-load_dotenv()
-
-# Базовые настройки
+# Загружаем .env из корня проекта
 BASE_DIR = Path(__file__).resolve().parent.parent
-SECRET_KEY = os.getenv('SECRET_KEY', 'django-insecure-your-default-key-here')
+load_dotenv(BASE_DIR / ".env")
+
+# ======================
+# Основные настройки
+# ======================
+SECRET_KEY = os.getenv('SECRET_KEY', 'django-insecure-fallback-key-for-dev')
 DEBUG = os.getenv('DEBUG', 'False') == 'True'
 
-# Настройки хоста
+# Хосты
 ALLOWED_HOSTS = os.getenv("ALLOWED_HOSTS", "localhost,127.0.0.1").split(",")
-
-# Автоматическое добавление Render хоста
-RENDER_EXTERNAL_HOSTNAME = os.environ.get('RENDER_EXTERNAL_HOSTNAME')
+RENDER_EXTERNAL_HOSTNAME = os.getenv('RENDER_EXTERNAL_HOSTNAME')
 if RENDER_EXTERNAL_HOSTNAME:
     ALLOWED_HOSTS.append(RENDER_EXTERNAL_HOSTNAME)
 
+# ======================
+# Настройки базы данных (ИСПРАВЛЕННЫЕ)
+# ======================
+# ======================
 # Настройки базы данных
+# ======================
 DATABASES = {
-    'default': dj_database_url.config(
+    'default': {
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': os.getenv('DB_NAME', 'sporthub_db2'),   # имя вашей базы
+        'USER': os.getenv('DB_USER', 'raha'),           # пользователь
+        'PASSWORD': os.getenv('DB_PASSWORD', 'password'),  # пароль
+        'HOST': os.getenv('DB_HOST', '127.0.0.1'),      # хост
+        'PORT': os.getenv('DB_PORT', '5432'),           # порт
+    }
+}
+
+# Если есть DATABASE_URL (например, в продакшене на Render/Heroku) — он будет приоритетным
+if os.getenv('DATABASE_URL'):
+    DATABASES['default'] = dj_database_url.config(
         default=os.getenv('DATABASE_URL'),
         conn_max_age=600,
         conn_health_checks=True,
         ssl_require=not DEBUG
     )
-}
 
+# ======================
 # Приложения
+# ======================
 INSTALLED_APPS = [
     'django.contrib.admin',
     'django.contrib.auth',
@@ -50,7 +68,9 @@ INSTALLED_APPS = [
     'users.apps.UsersConfig',
 ]
 
+# ======================
 # Middleware
+# ======================
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'whitenoise.middleware.WhiteNoiseMiddleware',
@@ -64,7 +84,9 @@ MIDDLEWARE = [
 
 ROOT_URLCONF = 'Sporthub.urls'
 
+# ======================
 # Шаблоны
+# ======================
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
@@ -83,7 +105,9 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'Sporthub.wsgi.application'
 
+# ======================
 # Валидация паролей
+# ======================
 AUTH_PASSWORD_VALIDATORS = [
     {'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator'},
     {'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator'},
@@ -91,22 +115,27 @@ AUTH_PASSWORD_VALIDATORS = [
     {'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator'},
 ]
 
+# ======================
 # Интернационализация
+# ======================
 LANGUAGE_CODE = 'ru-ru'
 TIME_ZONE = 'UTC'
 USE_I18N = True
 USE_TZ = True
 
-# Статические файлы
+# ======================
+# Статические и медиа файлы
+# ======================
 STATIC_URL = '/static/'
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
-# Медиа файлы
 MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
+# ======================
 # REST Framework
+# ======================
 REST_FRAMEWORK = {
     'DEFAULT_PERMISSION_CLASSES': [
         'rest_framework.permissions.AllowAny',
@@ -125,7 +154,9 @@ REST_FRAMEWORK = {
     ],
 }
 
+# ======================
 # JWT Настройки
+# ======================
 SIMPLE_JWT = {
     'ACCESS_TOKEN_LIFETIME': timedelta(minutes=15),
     'REFRESH_TOKEN_LIFETIME': timedelta(days=7),
@@ -133,7 +164,9 @@ SIMPLE_JWT = {
     'AUTH_TOKEN_CLASSES': ('rest_framework_simplejwt.tokens.RefreshToken',),
 }
 
+# ======================
 # Swagger
+# ======================
 SWAGGER_SETTINGS = {
     'SECURITY_DEFINITIONS': {
         'Bearer': {
@@ -147,29 +180,24 @@ SWAGGER_SETTINGS = {
     'PERSIST_AUTH': True,
 }
 
-# Email (раскомментируйте при необходимости)
-# EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
-# EMAIL_HOST = os.getenv('EMAIL_HOST')
-# EMAIL_PORT = os.getenv('EMAIL_PORT')
-# EMAIL_USE_TLS = os.getenv('EMAIL_USE_TLS', 'False') == 'True'
-# EMAIL_HOST_USER = os.getenv("EMAIL_HOST_USER")
-# EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD")
-# DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL")
-
+# ======================
 # Безопасность для production
+# ======================
 if not DEBUG:
     SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
     SECURE_SSL_REDIRECT = True
     SESSION_COOKIE_SECURE = True
     CSRF_COOKIE_SECURE = True
-    SECURE_HSTS_SECONDS = 31536000  # 1 year
+    SECURE_HSTS_SECONDS = 31536000
     SECURE_HSTS_INCLUDE_SUBDOMAINS = True
     SECURE_HSTS_PRELOAD = True
     SECURE_CONTENT_TYPE_NOSNIFF = True
     SECURE_BROWSER_XSS_FILTER = True
     X_FRAME_OPTIONS = 'DENY'
 
+# ======================
 # Логирование
+# ======================
 LOGGING = {
     'version': 1,
     'disable_existing_loggers': False,
@@ -177,10 +205,22 @@ LOGGING = {
         'console': {
             'class': 'logging.StreamHandler',
         },
+        'file': {
+            'class': 'logging.FileHandler',
+            'filename': os.path.join(BASE_DIR, 'django.log'),
+            'level': 'ERROR',
+        },
     },
     'root': {
-        'handlers': ['console'],
+        'handlers': ['console', 'file'],
         'level': 'WARNING',
+    },
+    'loggers': {
+        'django.db': {
+            'handlers': ['console', 'file'],
+            'level': 'ERROR',
+            'propagate': False,
+        },
     },
 }
 
