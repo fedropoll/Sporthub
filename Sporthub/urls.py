@@ -25,9 +25,6 @@ urlpatterns = [
     path('api/', include('main.urls')),
     path('', include('users.urls')),
 
-    # JWT Authentication Endpoints
-    path('api/token/', TokenRefreshView.as_view(), name='token_refresh'), # Эндпоинт для refresh-токена
-
     # Swagger Documentation
     path('swagger/', schema_view.with_ui('swagger', cache_timeout=0), name='schema-swagger-ui'),
     path('redoc/', schema_view.with_ui('redoc', cache_timeout=0), name='schema-redoc'),
