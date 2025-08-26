@@ -10,6 +10,8 @@ from django.shortcuts import get_object_or_404
 from drf_yasg.utils import swagger_auto_schema
 from drf_yasg import openapi
 from rest_framework_simplejwt.views import TokenObtainPairView
+from .utils.tokens import create_jwt_tokens_for_user, get_user_from_token
+
 from .models import (
     UserProfile, PasswordResetCode, Trainer, Hall, Club, Ad, Review, Notification,
     ClassSchedule, Joinclub, Attendance
@@ -22,6 +24,7 @@ from .serializers import (
     JoinclubSerializer, AttendanceSerializer
 )
 from .utils import generate_and_send_code
+from .utils.tokens import create_jwt_tokens_for_user, get_user_from_token
 
 import logging
 import datetime
@@ -40,17 +43,6 @@ class RegisterView(APIView):
         operation_description="""
         Создаёт нового пользователя в системе. После успешной регистрации
         на указанный email отправляется код подтверждения.
-        
-        ### Обязательные поля:
-        - `email` - адрес электронной почты
-        - `password` - пароль (минимум 8 символов)
-        - `first_name` - имя пользователя
-        - `last_name` - фамилия пользователя
-        
-        ### Ответ при успехе:
-        - `success: true`
-        - `message` - сообщение об успешной регистрации
-        - `email` - email, на который отправлен код подтверждения
         """,
         request_body=RegisterSerializer,
         responses={
@@ -76,9 +68,6 @@ class RegisterView(APIView):
         }
     )
     def post(self, request):
-        """
-        Обрабатывает запрос на регистрацию нового пользователя.
-        """
         serializer = RegisterSerializer(data=request.data)
         if serializer.is_valid():
             user = serializer.save()
@@ -101,16 +90,6 @@ class VerifyCodeView(APIView):
         operation_summary="Подтверждение email по коду",
         operation_description="""
         Подтверждает email пользователя с помощью кода, отправленного при регистрации.
-        
-        ### Обязательные поля:
-        - `email` - email, на который был отправлен код
-        - `code` - 4-значный код подтверждения
-        
-        ### Ответ при успехе:
-        - `success: true`
-        - `message` - сообщение об успешной активации
-        - `tokens` - JWT токены для аутентификации
-        - `user` - данные пользователя
         """,
         request_body=VerifyCodeSerializer,
         responses={
@@ -145,20 +124,17 @@ class VerifyCodeView(APIView):
         }
     )
     def post(self, request):
-        """
-        Обрабатывает запрос на подтверждение email по коду.
-        """
         serializer = VerifyCodeSerializer(data=request.data)
         if serializer.is_valid():
             user = serializer.validated_data['user']
-            refresh = RefreshToken.for_user(user)
+
+            # Создаем УНИКАЛЬНЫЕ токены для каждого пользователя
+            tokens = create_jwt_tokens_for_user(user)
+
             return Response({
                 'success': True,
                 'message': 'Аккаунт успешно активирован',
-                'tokens': {
-                    'refresh': str(refresh),
-                    'access': str(refresh.access_token),
-                },
+                'tokens': tokens,
                 'user': {
                     'id': user.id,
                     'email': user.email,
@@ -180,15 +156,6 @@ class LoginView(APIView):
         operation_summary="Вход в аккаунт",
         operation_description="""
         Аутентификация пользователя по email и паролю.
-        
-        ### Обязательные поля:
-        - `email` - адрес электронной почты
-        - `password` - пароль
-        
-        ### Ответ при успехе:
-        - `success: true`
-        - `tokens` - JWT токены для аутентификации
-        - `user` - данные пользователя
         """,
         request_body=LoginSerializer,
         responses={
@@ -224,19 +191,16 @@ class LoginView(APIView):
         }
     )
     def post(self, request):
-        """
-        Обрабатывает запрос на вход в аккаунт.
-        """
         serializer = LoginSerializer(data=request.data)
         if serializer.is_valid():
             user = serializer.validated_data['user']
-            refresh = RefreshToken.for_user(user)
+
+            # Создаем УНИКАЛЬНЫЕ токены для каждого пользователя
+            tokens = create_jwt_tokens_for_user(user)
+
             return Response({
                 'success': True,
-                'tokens': {
-                    'refresh': str(refresh),
-                    'access': str(refresh.access_token),
-                },
+                'tokens': tokens,
                 'user': {
                     'id': user.id,
                     'email': user.email,
@@ -260,14 +224,6 @@ class ForgotPasswordView(APIView):
         operation_summary="Запрос на восстановление пароля",
         operation_description="""
         Отправляет код подтверждения для сброса пароля на указанный email.
-        
-        ### Обязательные поля:
-        - `email` - адрес электронной почты
-        
-        ### Ответ при успехе:
-        - `success: true`
-        - `message` - сообщение об отправке кода
-        - `email` - email, на который отправлен код
         """,
         request_body=ForgotPasswordSerializer,
         responses={
@@ -293,9 +249,6 @@ class ForgotPasswordView(APIView):
         }
     )
     def post(self, request):
-        """
-        Обрабатывает запрос на восстановление пароля.
-        """
         serializer = ForgotPasswordSerializer(data=request.data)
         if serializer.is_valid():
             email = serializer.validated_data['email']
@@ -326,14 +279,22 @@ class ResetPasswordView(APIView):
         operation_summary="Сброс пароля",
         operation_description="""
         Позволяет сбросить пароль пользователя, используя email, код верификации
-        и новый пароль. Код должен быть предварительно отправлен через `ForgotPasswordView`.
+        и новый пароль.
         """,
         request_body=ResetPasswordSerializer,
         responses={
-            200: openapi.Response('Пароль изменен', examples={'application/json': {'success': True,
-                                                                                   'message': 'Пароль успешно изменен. Теперь вы можете войти с новым паролем'}}),
+            200: openapi.Response('Пароль изменен', examples={
+                'application/json': {
+                    'success': True,
+                    'message': 'Пароль успешно изменен. Теперь вы можете войти с новым паролем'
+                }
+            }),
             400: openapi.Response('Неверные данные', examples={
-                'application/json': {'success': False, 'errors': {'code': ['Неверный код верификации']}}})
+                'application/json': {
+                    'success': False,
+                    'errors': {'code': ['Неверный код верификации']}
+                }
+            })
         }
     )
     def post(self, request):
@@ -357,8 +318,7 @@ class ResendCodeView(APIView):
         tags=['🔐 Аутентификация'],
         operation_summary="Повторная отправка кода верификации",
         operation_description="""
-        Повторно отправляет код верификации на email пользователя. Может
-        использоваться как для активации аккаунта, так и для сброса пароля.
+        Повторно отправляет код верификации на email пользователя.
         """,
         request_body=openapi.Schema(
             type=openapi.TYPE_OBJECT,
@@ -369,9 +329,11 @@ class ResendCodeView(APIView):
         ),
         responses={
             200: openapi.Response('Код отправлен повторно', examples={
-                'application/json': {'success': True, 'message': 'Код отправлен повторно'}}),
+                'application/json': {'success': True, 'message': 'Код отправлен повторно'}
+            }),
             400: openapi.Response('Email не найден', examples={
-                'application/json': {'success': False, 'errors': {'email': ['Пользователь не найден']}}})
+                'application/json': {'success': False, 'errors': {'email': ['Пользователь не найден']}}
+            })
         }
     )
     def post(self, request):
@@ -396,7 +358,119 @@ class ResendCodeView(APIView):
             }, status=status.HTTP_400_BAD_REQUEST)
 
 
+class RefreshTokenView(APIView):
+    permission_classes = [AllowAny]
+
+    @swagger_auto_schema(
+        tags=['🔐 Аутентификация'],
+        operation_summary="Обновление токена доступа",
+        operation_description="""
+        Обновляет access token с помощью refresh token.
+        """,
+        request_body=openapi.Schema(
+            type=openapi.TYPE_OBJECT,
+            required=['refresh'],
+            properties={
+                'refresh': openapi.Schema(type=openapi.TYPE_STRING, description='Refresh token'),
+            }
+        ),
+        responses={
+            200: openapi.Response('Токен обновлен', examples={
+                'application/json': {
+                    'success': True,
+                    'access': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...'
+                }
+            }),
+            400: openapi.Response('Неверный токен', examples={
+                'application/json': {
+                    'success': False,
+                    'error': 'Неверный refresh token'
+                }
+            })
+        }
+    )
+    def post(self, request):
+        refresh_token = request.data.get('refresh')
+
+        if not refresh_token:
+            return Response({
+                'success': False,
+                'error': 'Refresh token обязателен'
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            # Создаем новый access token из refresh token
+            refresh = RefreshToken(refresh_token)
+            access_token = str(refresh.access_token)
+
+            return Response({
+                'success': True,
+                'access': access_token
+            }, status=status.HTTP_200_OK)
+
+        except Exception as e:
+            return Response({
+                'success': False,
+                'error': 'Неверный refresh token'
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+
+class LogoutView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    @swagger_auto_schema(
+        tags=['🔐 Аутентификация'],
+        operation_summary="Выход из системы",
+        operation_description="""
+        Выход из системы с добавлением refresh token в черный список.
+        """,
+        request_body=openapi.Schema(
+            type=openapi.TYPE_OBJECT,
+            required=['refresh'],
+            properties={
+                'refresh': openapi.Schema(type=openapi.TYPE_STRING,
+                                          description='Refresh token для добавления в черный список'),
+            }
+        ),
+        responses={
+            200: openapi.Response('Успешный выход', examples={
+                'application/json': {'success': True, 'message': 'Успешный выход из системы'}
+            }),
+            400: openapi.Response('Ошибка', examples={
+                'application/json': {'success': False, 'error': 'Неверный refresh token'}
+            })
+        }
+    )
+    def post(self, request):
+        refresh_token = request.data.get('refresh')
+
+        if not refresh_token:
+            return Response({
+                'success': False,
+                'error': 'Refresh token обязателен'
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            # Добавляем refresh token в черный список
+            token = RefreshToken(refresh_token)
+            token.blacklist()
+
+            return Response({
+                'success': True,
+                'message': 'Успешный выход из системы'
+            }, status=status.HTTP_200_OK)
+
+        except Exception as e:
+            return Response({
+                'success': False,
+                'error': 'Неверный refresh token'
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+
 # -------------------- RESOURCE VIEWS --------------------
+# Остальные view остаются без изменений, так как они используют стандартную
+# аутентификацию JWT, которая теперь будет работать правильно
+
 class UserProfileViewSet(viewsets.ModelViewSet):
     queryset = UserProfile.objects.all()
     serializer_class = UserProfileSerializer
@@ -406,13 +480,14 @@ class UserProfileViewSet(viewsets.ModelViewSet):
         tags=['👤 Профиль пользователя'],
         operation_summary="Получить данные профиля пользователя",
         operation_description="""
-        Возвращает данные профиля (UserProfile) текущего аутентифицированного пользователя.
-        Требуется авторизация.
+        Возвращает данные профиля текущего аутентифицированного пользователя.
         """,
         responses={
             200: openapi.Response('Данные профиля', UserProfileSerializer),
             401: 'Не авторизован',
-            404: openapi.Response('Профиль не найден', examples={'application/json': {'success': False, 'message': 'Профиль не найден'}})
+            404: openapi.Response('Профиль не найден', examples={
+                'application/json': {'success': False, 'message': 'Профиль не найден'}
+            })
         }
     )
     def retrieve(self, request, pk=None):
@@ -433,16 +508,18 @@ class UserProfileViewSet(viewsets.ModelViewSet):
         tags=['👤 Профиль пользователя'],
         operation_summary="Редактировать данные профиля пользователя",
         operation_description="""
-        Обновляет данные профиля (UserProfile) текущего аутентифицированного пользователя.
-        Используется `partial=True`, что позволяет обновлять только некоторые поля.
-        Требуется авторизация.
+        Обновляет данные профиля текущего аутентифицированного пользователя.
         """,
         request_body=UserProfileSerializer,
         responses={
             200: openapi.Response('Обновленные данные профиля', UserProfileSerializer),
-            400: openapi.Response('Ошибка валидации', examples={'application/json': {'success': False, 'errors': {'phone_number': ['Неверный формат номера']}}}),
+            400: openapi.Response('Ошибка валидации', examples={
+                'application/json': {'success': False, 'errors': {'phone_number': ['Неверный формат номера']}}
+            }),
             401: 'Не авторизован',
-            404: openapi.Response('Профиль не найден', examples={'application/json': {'success': False, 'message': 'Профиль не найден'}})
+            404: openapi.Response('Профиль не найден', examples={
+                'application/json': {'success': False, 'message': 'Профиль не найден'}
+            })
         }
     )
     def update(self, request, pk=None):
@@ -466,10 +543,8 @@ class UserProfileViewSet(viewsets.ModelViewSet):
                 'message': 'Профиль не найден'
             }, status=status.HTTP_404_NOT_FOUND)
 
-
     def get_queryset(self):
         return UserProfile.objects.filter(user=self.request.user)
-
 class ClientViewSet(viewsets.ModelViewSet):
     """
     API для управления клиентами.

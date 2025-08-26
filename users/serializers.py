@@ -2,6 +2,7 @@ from rest_framework import serializers
 from django.contrib.auth import get_user_model
 from django.contrib.auth import authenticate
 from rest_framework.exceptions import ValidationError
+from .utils import generate_and_send_code
 from .models import (
     UserProfile, PasswordResetCode, Ad, Hall, Club, Trainer,
     Review, Notification, ClassSchedule, Joinclub, Attendance
