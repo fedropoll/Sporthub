@@ -13,6 +13,11 @@ load_dotenv(BASE_DIR / ".env")
 SECRET_KEY = os.getenv('SECRET_KEY', 'django-insecure-dev-key-1234567890')
 DEBUG = os.getenv('DEBUG', 'True') == 'True'
 
+DATABASE_URL = os.getenv('DATABASE_URL')
+
+DATABASES = {
+    'default': dj_database_url.parse(DATABASE_URL, conn_max_age=600, ssl_require=True)
+}
 # ALLOWED_HOSTS
 ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', '').split(',')
 if not ALLOWED_HOSTS or ALLOWED_HOSTS == ['']:
@@ -27,9 +32,13 @@ if os.getenv("USE_SQLITE", "False") == "True":
         }
     }
 else:
-    DATABASES = {
-        'default': dj_database_url.parse(os.getenv('DATABASE_URL'))
-    }
+    DATABASE_URL = os.getenv('DATABASE_URL')
+    if DATABASE_URL:
+        DATABASES = {
+            'default': dj_database_url.parse(DATABASE_URL, conn_max_age=600, ssl_require=True)
+        }
+    else:
+        raise Exception("DATABASE_URL не задан в переменных окружения!")
 
 # ======================
 # Email
