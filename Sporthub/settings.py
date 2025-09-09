@@ -112,7 +112,8 @@ USE_TZ = True
 # Статические и медиа файлы
 # ======================
 STATIC_URL = '/static/'
-STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
+STATIC_ROOT = BASE_DIR / 'staticfiles'
+STATICFILES_DIRS = [BASE_DIR / "static"]  # можно оставить пустым, если нет локальной статики
 
 MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
@@ -186,6 +187,5 @@ LOGGING = {
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-STATICFILES_DIRS = [BASE_DIR / "static"]
 
 SWAGGER_SETTINGS['STATIC_URL'] = STATIC_URL
