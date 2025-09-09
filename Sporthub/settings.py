@@ -1,36 +1,47 @@
 import os
 from pathlib import Path
 from datetime import timedelta
+import dj_database_url
 from dotenv import load_dotenv
 
-# Загружаем .env из корня проекта
+# ======================
+# Базовые настройки
+# ======================
 BASE_DIR = Path(__file__).resolve().parent.parent
 load_dotenv(BASE_DIR / ".env")
 
-# ======================
-# Основные настройки
-# ======================
 SECRET_KEY = os.getenv('SECRET_KEY', 'django-insecure-dev-key-1234567890')
 DEBUG = os.getenv('DEBUG', 'True') == 'True'
 
-# Хосты
-ALLOWED_HOSTS = ["outstanding-malena-1kaitech1-e7911c4a.koyeb.app"]
-
-# ALLOWED_HOSTS = [
-#     "127.0.0.1",
-#     "localhost",
-#     os.getenv("RENDER_EXTERNAL_HOSTNAME", "")
-# ]
+# ALLOWED_HOSTS
+ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', '').split(',')
+if not ALLOWED_HOSTS or ALLOWED_HOSTS == ['']:
+    ALLOWED_HOSTS = ["127.0.0.1", "localhost"]
 
 # ======================
-# Настройки базы данных - ТОЛЬКО SQLITE
+# База данных
 # ======================
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+if os.getenv("USE_SQLITE", "False") == "True":
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.sqlite3',
+            'NAME': BASE_DIR / 'db.sqlite3',
+        }
     }
-}
+else:
+    DATABASES = {
+        'default': dj_database_url.parse(os.getenv('DATABASE_URL'))
+    }
+
+# ======================
+# Email
+# ======================
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_HOST = os.getenv('EMAIL_HOST')
+EMAIL_PORT = int(os.getenv('EMAIL_PORT', 587))
+EMAIL_USE_TLS = os.getenv('EMAIL_USE_TLS') == 'True'
+EMAIL_HOST_USER = os.getenv('EMAIL_HOST_USER')
+EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD')
 
 # ======================
 # Приложения
@@ -60,19 +71,22 @@ INSTALLED_APPS = [
 # ======================
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
-    'whitenoise.middleware.WhiteNoiseMiddleware',  # <- должно быть сразу после SecurityMiddleware
 ]
 
 STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
-
+# ======================
+# URLs и WSGI
+# ======================
 ROOT_URLCONF = 'Sporthub.urls'
+WSGI_APPLICATION = 'Sporthub.wsgi.application'
 
 # ======================
 # Шаблоны
@@ -93,10 +107,8 @@ TEMPLATES = [
     },
 ]
 
-WSGI_APPLICATION = 'Sporthub.wsgi.application'
-
 # ======================
-# Валидация паролей
+# Пароли
 # ======================
 AUTH_PASSWORD_VALIDATORS = []
 
@@ -109,14 +121,14 @@ USE_I18N = True
 USE_TZ = True
 
 # ======================
-# Статические и медиа файлы
+# Статика и медиа
 # ======================
 STATIC_URL = '/static/'
 STATIC_ROOT = BASE_DIR / 'staticfiles'
-STATICFILES_DIRS = [BASE_DIR / "static"]  # можно оставить пустым, если нет локальной статики
+STATICFILES_DIRS = [BASE_DIR / "static"]
 
 MEDIA_URL = '/media/'
-MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+MEDIA_ROOT = BASE_DIR / 'media'
 
 # ======================
 # REST Framework
@@ -140,7 +152,7 @@ REST_FRAMEWORK = {
 }
 
 # ======================
-# JWT Настройки
+# JWT
 # ======================
 SIMPLE_JWT = {
     'ACCESS_TOKEN_LIFETIME': timedelta(minutes=15),
@@ -150,7 +162,7 @@ SIMPLE_JWT = {
     'UPDATE_LAST_LOGIN': True,
     'ALGORITHM': 'HS256',
     'SIGNING_KEY': SECRET_KEY,
-    'AUTH_HEADER_TYPES': ('Bearer',),
+    'AUTH_HEADER_TYPES': [''],  # токен без Bearer
 }
 
 # ======================
@@ -166,6 +178,7 @@ SWAGGER_SETTINGS = {
     },
     'USE_SESSION_AUTH': False,
     'PERSIST_AUTH': True,
+    'STATIC_URL': STATIC_URL,
 }
 
 # ======================
@@ -175,17 +188,9 @@ LOGGING = {
     'version': 1,
     'disable_existing_loggers': False,
     'handlers': {
-        'console': {
-            'class': 'logging.StreamHandler',
-        },
+        'console': {'class': 'logging.StreamHandler'},
     },
-    'root': {
-        'handlers': ['console'],
-        'level': 'WARNING',
-    },
+    'root': {'handlers': ['console'], 'level': 'WARNING'},
 }
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
-
-
-SWAGGER_SETTINGS['STATIC_URL'] = STATIC_URL
