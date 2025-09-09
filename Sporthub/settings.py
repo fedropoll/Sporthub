@@ -18,9 +18,7 @@ ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', '').split(',')
 if not ALLOWED_HOSTS or ALLOWED_HOSTS == ['']:
     ALLOWED_HOSTS = ["127.0.0.1", "localhost"]
 
-# ======================
-# База данных
-# ======================
+
 if os.getenv("USE_SQLITE", "False") == "True":
     DATABASES = {
         'default': {
