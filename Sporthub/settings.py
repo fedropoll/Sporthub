@@ -14,12 +14,13 @@ SECRET_KEY = os.getenv('SECRET_KEY', 'django-insecure-dev-key-1234567890')
 DEBUG = os.getenv('DEBUG', 'True') == 'True'
 
 # Хосты
+ALLOWED_HOSTS = ["outstanding-malena-1kaitech1-e7911c4a.koyeb.app"]
 
-ALLOWED_HOSTS = [
-    "127.0.0.1",
-    "localhost",
-    os.getenv("RENDER_EXTERNAL_HOSTNAME", "")
-]
+# ALLOWED_HOSTS = [
+#     "127.0.0.1",
+#     "localhost",
+#     os.getenv("RENDER_EXTERNAL_HOSTNAME", "")
+# ]
 
 # ======================
 # Настройки базы данных - ТОЛЬКО SQLITE
