@@ -164,7 +164,7 @@ SIMPLE_JWT = {
     'UPDATE_LAST_LOGIN': True,
     'ALGORITHM': 'HS256',
     'SIGNING_KEY': SECRET_KEY,
-    'AUTH_HEADER_TYPES': [''],  # токен без Bearer
+    'AUTH_HEADER_TYPES': [''],
 }
 
 # ======================
