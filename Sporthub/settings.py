@@ -15,16 +15,8 @@ DEBUG = os.getenv('DEBUG', 'True') == 'True'
 
 DATABASE_URL = os.getenv('DATABASE_URL')
 
-
-
-DATABASES = {
-    "default": dj_database_url.config(
-        default=os.environ.get("DATABASE_URL")
-    )
-}
-
 # ALLOWED_HOSTS
-ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', '').split(',')
+ALLOWED_HOSTS = ['outstanding-malena-1kaitech1-e7911c4a.koyeb.app']
 if not ALLOWED_HOSTS or ALLOWED_HOSTS == ['']:
     ALLOWED_HOSTS = ["127.0.0.1", "localhost"]
 
