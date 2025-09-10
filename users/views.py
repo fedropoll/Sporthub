@@ -870,7 +870,7 @@ class ReviewViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAdminUser]
 
     def get_permissions(self):
-        if self.action in ['list', 'retrieve']:
+        if self.action in []:
             return [AllowAny()]
         return [IsAdminUser()]
 
