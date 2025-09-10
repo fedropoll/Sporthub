@@ -172,16 +172,18 @@ SIMPLE_JWT = {
 # ======================
 SWAGGER_SETTINGS = {
     'SECURITY_DEFINITIONS': {
-        'Bearer': {
+        'Token': {
             'type': 'apiKey',
             'name': 'Authorization',
             'in': 'header',
+            'description': 'Вставьте токен прямо (без Bearer)',
         }
     },
     'USE_SESSION_AUTH': False,
     'PERSIST_AUTH': True,
     'STATIC_URL': STATIC_URL,
 }
+
 
 # ======================
 # Логирование
