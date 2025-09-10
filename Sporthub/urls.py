@@ -7,6 +7,7 @@ from rest_framework_simplejwt.views import (
     TokenRefreshView, # Используем только TokenRefreshView
 )
 
+
 schema_view = get_schema_view(
     openapi.Info(
         title="Sporthub API",
