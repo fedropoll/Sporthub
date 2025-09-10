@@ -9,7 +9,7 @@ schema_view = get_schema_view(
     openapi.Info(
         title="Sporthub API",
         default_version='v1',
-        description="API для спортивного приложения",
+        description="МИРБА ГЕЙ",
     ),
     public=True,
     permission_classes=(permissions.AllowAny,),
