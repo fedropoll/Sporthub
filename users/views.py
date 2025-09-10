@@ -560,7 +560,7 @@ class ClientViewSet(viewsets.ModelViewSet):
     """
     queryset = UserProfile.objects.select_related('user').all()
     serializer_class = ClientDetailSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAdminUser]
 
     def get_permissions(self):
         """
