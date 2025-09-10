@@ -1,1 +1,2 @@
-web: gunicorn Sporthub.wsgi --workers 4 --timeout 120 --log-file -
+release: python manage.py migrate
+web: gunicorn Sporthub.wsgi --log-file -
