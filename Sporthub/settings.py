@@ -164,7 +164,7 @@ SIMPLE_JWT = {
     'UPDATE_LAST_LOGIN': True,
     'ALGORITHM': 'HS256',
     'SIGNING_KEY': SECRET_KEY,
-    'AUTH_HEADER_TYPES': [''],
+    'AUTH_HEADER_TYPES': ['Bearer'],
 }
 
 # ======================
@@ -172,7 +172,7 @@ SIMPLE_JWT = {
 # ======================
 SWAGGER_SETTINGS = {
     'SECURITY_DEFINITIONS': {
-        'Token': {
+        'Bearer': {
             'type': 'apiKey',
             'name': 'Authorization',
             'in': 'header',
