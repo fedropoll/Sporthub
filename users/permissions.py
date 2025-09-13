@@ -5,3 +5,14 @@ class IsOwnerOrReadOnly(permissions.BasePermission):
         if request.user.is_staff:
             return True
         return obj.user == request.user
+
+
+class ReadOnlyOrAdmin(permissions.BasePermission):
+    """
+    GET, HEAD, OPTIONS доступны всем.
+    Остальное — только админу.
+    """
+    def has_permission(self, request, view):
+        if request.method in permissions.SAFE_METHODS:
+            return True
+        return request.user and request.user.is_staff

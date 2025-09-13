@@ -1,33 +1,29 @@
 from rest_framework import viewsets, permissions, status, mixins
 from rest_framework.views import APIView
 from rest_framework.response import Response
-from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated, IsAdminUser, AllowAny
 from rest_framework_simplejwt.tokens import RefreshToken
-from django.contrib.auth.models import User, AnonymousUser
+from django.contrib.auth.models import User
 from django.core.exceptions import ObjectDoesNotExist
 from django.shortcuts import get_object_or_404
 from drf_yasg.utils import swagger_auto_schema
 from drf_yasg import openapi
-from rest_framework_simplejwt.views import TokenObtainPairView
-from .utils.tokens import create_jwt_tokens_for_user, get_user_from_token
-
 from .models import (
-    UserProfile, PasswordResetCode, Trainer, Hall, Club, Ad, Review, Notification,
-    ClassSchedule, Joinclub, Attendance
+    UserProfile,  Trainer, Hall, Club, Ad, Review, Notification,
+    ClassSchedule, Joinclub,
 )
 from .serializers import (
-    UserSerializer, RegisterSerializer, VerifyCodeSerializer, LoginSerializer,
+    RegisterSerializer, VerifyCodeSerializer, LoginSerializer,
     UserProfileSerializer, TrainerSerializer, HallSerializer, ClubSerializer,
     AdSerializer, ReviewSerializer, NotificationSerializer, ClientDetailSerializer,
     ForgotPasswordSerializer, ResetPasswordSerializer, ClassScheduleSerializer,
-    JoinclubSerializer, AttendanceSerializer
+    JoinclubSerializer,
 )
 from .utils import generate_and_send_code
-from .utils.tokens import create_jwt_tokens_for_user, get_user_from_token
-
+from .utils.tokens import create_jwt_tokens_for_user
+from . import permissions as custom_permissions
 import logging
-import datetime
+
 
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
@@ -357,64 +353,6 @@ class ResendCodeView(APIView):
                 "errors": {"email": ["Пользователь не найден"]}
             }, status=status.HTTP_400_BAD_REQUEST)
 
-
-class RefreshTokenView(APIView):
-    permission_classes = [AllowAny]
-
-    @swagger_auto_schema(
-        tags=['🔐 Аутентификация'],
-        operation_summary="Обновление токена доступа",
-        operation_description="""
-        Обновляет access token с помощью refresh token.
-        """,
-        request_body=openapi.Schema(
-            type=openapi.TYPE_OBJECT,
-            required=['refresh'],
-            properties={
-                'refresh': openapi.Schema(type=openapi.TYPE_STRING, description='Refresh token'),
-            }
-        ),
-        responses={
-            200: openapi.Response('Токен обновлен', examples={
-                'application/json': {
-                    'success': True,
-                    'access': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...'
-                }
-            }),
-            400: openapi.Response('Неверный токен', examples={
-                'application/json': {
-                    'success': False,
-                    'error': 'Неверный refresh token'
-                }
-            })
-        }
-    )
-    def post(self, request):
-        refresh_token = request.data.get('refresh')
-
-        if not refresh_token:
-            return Response({
-                'success': False,
-                'error': 'Refresh token обязателен'
-            }, status=status.HTTP_400_BAD_REQUEST)
-
-        try:
-            # Создаем новый access token из refresh token
-            refresh = RefreshToken(refresh_token)
-            access_token = str(refresh.access_token)
-
-            return Response({
-                'success': True,
-                'access': access_token
-            }, status=status.HTTP_200_OK)
-
-        except Exception as e:
-            return Response({
-                'success': False,
-                'error': 'Неверный refresh token'
-            }, status=status.HTTP_400_BAD_REQUEST)
-
-
 class LogoutView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -465,11 +403,6 @@ class LogoutView(APIView):
                 'success': False,
                 'error': 'Неверный refresh token'
             }, status=status.HTTP_400_BAD_REQUEST)
-
-
-# -------------------- RESOURCE VIEWS --------------------
-# Остальные view остаются без изменений, так как они используют стандартную
-# аутентификацию JWT, которая теперь будет работать правильно
 
 class UserProfileViewSet(viewsets.ModelViewSet):
     queryset = UserProfile.objects.all()
@@ -563,14 +496,10 @@ class ClientViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAdminUser]
 
     def get_permissions(self):
-        """
-        Настройка прав доступа в зависимости от действия.
-        """
-        if self.action in ['list']:
-            return [IsAdminUser()]
-        elif self.action in ['create', 'update', 'partial_update', 'destroy']:
-            return [IsAdminUser()]
-        return [IsAuthenticated()]
+        if self.action in ['list', 'retrieve']:
+            return [AllowAny()]  # правильно
+        return [IsAdminUser()]    # правильно
+
 
     @swagger_auto_schema(
         tags=['👥 Управление клиентами'],
@@ -699,7 +628,7 @@ class ClientViewSet(viewsets.ModelViewSet):
 class HallViewSet(viewsets.ModelViewSet):
     queryset = Hall.objects.all()
     serializer_class = HallSerializer
-    permission_classes = [IsAdminUser]
+    permission_classes = [permissions.ReadOnlyOrAdmin]
 
     def get_permissions(self):
         if self.action in ['list', 'retrieve']:
@@ -766,27 +695,27 @@ class ClubViewSet(viewsets.ModelViewSet):
             return [AllowAny()]
         return [IsAdminUser()]
 
-    @swagger_auto_schema(tags=['🏀 Клубы (для админа)'],operation_summary='Получить список клубов', operation_description='Возвращает список всех клубов.')
+    @swagger_auto_schema(tags=['🏀 Клубы (для админа но GET для всех)'],operation_summary='Получить список клубов', operation_description='Возвращает список всех клубов.')
     def list(self, request, *args, **kwargs):
         return super().list(request, *args, **kwargs)
 
-    @swagger_auto_schema(tags=['🏀 Клубы (для админа)'], operation_summary='Получить детали клуба', operation_description='Возвращает детальную информацию о конкретном клубе.')
+    @swagger_auto_schema(tags=['🏀 Клубы (для админа но GET для всех)'], operation_summary='Получить детали клуба', operation_description='Возвращает детальную информацию о конкретном клубе.')
     def retrieve(self, request, *args, **kwargs):
         return super().retrieve(request, *args, **kwargs)
 
-    @swagger_auto_schema(tags=['🏀 Клубы (для админа)'], operation_summary='Создать новый клуб', operation_description='Создает новый клуб. Доступно только администраторам.')
+    @swagger_auto_schema(tags=['🏀 Клубы (для админа но GET для всех)'], operation_summary='Создать новый клуб', operation_description='Создает новый клуб. Доступно только администраторам.')
     def create(self, request, *args, **kwargs):
         return super().create(request, *args, **kwargs)
 
-    @swagger_auto_schema(tags=['🏀 Клубы (для админа)'], operation_summary='Обновить информацию о клубе', operation_description='Полное обновление информации о клубе. Доступно только администраторам.')
+    @swagger_auto_schema(tags=['🏀 Клубы (для админа но GET для всех)'], operation_summary='Обновить информацию о клубе', operation_description='Полное обновление информации о клубе. Доступно только администраторам.')
     def update(self, request, *args, **kwargs):
         return super().update(request, *args, **kwargs)
 
-    @swagger_auto_schema(tags=['🏀 Клубы (для админа)'], operation_summary='Частично обновить клуб', operation_description='Частичное обновление информации о клубе. Доступно только администраторам.')
+    @swagger_auto_schema(tags=['🏀 Клубы (для админа но GET для всех)'], operation_summary='Частично обновить клуб', operation_description='Частичное обновление информации о клубе. Доступно только администраторам.')
     def partial_update(self, request, *args, **kwargs):
         return super().partial_update(request, *args, **kwargs)
 
-    @swagger_auto_schema(tags=['🏀 Клубы (для админа)'], operation_summary='Удалить клуб', operation_description='Удаляет клуб. Доступно только администраторам.')
+    @swagger_auto_schema(tags=['🏀 Клубы (для админа но GET для всех)'], operation_summary='Удалить клуб', operation_description='Удаляет клуб. Доступно только администраторам.')
     def destroy(self, request, *args, **kwargs):
         return super().destroy(request, *args, **kwargs)
 
@@ -867,10 +796,10 @@ class AdViewSet(viewsets.ModelViewSet):
 class ReviewViewSet(viewsets.ModelViewSet):
     queryset = Review.objects.all()
     serializer_class = ReviewSerializer
-    permission_classes = [IsAdminUser]
+    permission_classes = [permissions.ReadOnlyOrAdmin]
 
     def get_permissions(self):
-        if self.action in []:
+        if self.action in ['list']:
             return [AllowAny()]
         return [IsAdminUser()]
 
