@@ -628,7 +628,7 @@ class ClientViewSet(viewsets.ModelViewSet):
 class HallViewSet(viewsets.ModelViewSet):
     queryset = Hall.objects.all()
     serializer_class = HallSerializer
-    permission_classes = [permissions.ReadOnlyOrAdmin]
+    permission_classes = [IsAdminUser]
 
     def get_permissions(self):
         if self.action in ['list', 'retrieve']:
