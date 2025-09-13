@@ -4,6 +4,7 @@ from datetime import timedelta
 import dj_database_url
 from dotenv import load_dotenv
 
+
 # ======================
 # Базовые настройки
 # ======================
@@ -68,6 +69,7 @@ INSTALLED_APPS = [
     'users.apps.UsersConfig',
 ]
 
+
 # ======================
 # Middleware
 # ======================
@@ -125,9 +127,11 @@ USE_TZ = True
 # ======================
 # Статика и медиа
 # ======================
-STATIC_URL = '/static/'
+STATIC_URL = '/staticfiles/'
 STATIC_ROOT = BASE_DIR / 'staticfiles'
-STATICFILES_DIRS = [BASE_DIR / "static"]
+STATICFILES_DIRS = [
+    BASE_DIR / "static"
+]
 
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
