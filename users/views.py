@@ -796,7 +796,7 @@ class AdViewSet(viewsets.ModelViewSet):
 class ReviewViewSet(viewsets.ModelViewSet):
     queryset = Review.objects.all()
     serializer_class = ReviewSerializer
-    permission_classes = [permissions.ReadOnlyOrAdmin]
+    permission_classes = [IsAdminUser]
 
     def get_permissions(self):
         if self.action in ['list']:
