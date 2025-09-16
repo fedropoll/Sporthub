@@ -7,7 +7,7 @@ from django.views.generic import RedirectView
 
 schema_view = get_schema_view(
     openapi.Info(
-        title="Sporthub API",
+        title="МИРБА ГЕЙ",
         default_version='v1',
         description="МИРБА ГЕЙ",
     ),
