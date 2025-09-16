@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Hall, Club, Review
+from users.models import Hall, Club, Review
 
 class HallSerializer(serializers.ModelSerializer):
     average_rating = serializers.FloatField(read_only=True)
@@ -8,13 +8,14 @@ class HallSerializer(serializers.ModelSerializer):
     class Meta:
         model = Hall
         fields = [
-            'id', 'name', 'address', 'phone', 'working_hours', 'images',
-            'advantages', 'size', 'hall_type', 'coating', 'inventory',
-            'price_per_hour', 'dressing_room', 'lighting', 'shower',
-            'capacity', 'latitude', 'longitude', 'average_rating',
-            'review_count', 'video_url'
+            'id', 'title', 'sport', 'description', 'address',
+            'price_per_hour', 'size', 'count', 'type', 'coating', 'inventory',
+            'has_locker_room', 'has_lighting', 'has_shower', 'images',
+            'video_url', 'average_rating', 'review_count'
         ]
         ref_name = 'MainHall'
+
+
 
 
 
@@ -26,33 +27,26 @@ class ClubSerializer(serializers.ModelSerializer):
     class Meta:
         model = Club
         fields = [
-            'id', 'name', 'description', 'coach', 'contact_phone',
+            'id', 'title', 'description', 'coach', 'contact_phone',
             'training_schedule', 'age_groups', 'price_per_month',
             'hall', 'hall_info', 'logo', 'average_rating',
             'review_count', 'video_url'
         ]
-        extra_kwargs = {
-            'hall': {'write_only': True}
-        }
-        ref_name = 'MainClub'  # уникальное имя для Swagger
+        extra_kwargs = {'hall': {'write_only': True}}
+        ref_name = 'MainClub'
+
 
 
 class ReviewSerializer(serializers.ModelSerializer):
     class Meta:
         model = Review
         fields = [
-            'id', 'author', 'hall', 'club', 'rating', 'text',
+            'id', 'user', 'hall', 'club', 'rating', 'text',
             'created_at', 'updated_at'
         ]
-        read_only_fields = ['author', 'created_at', 'updated_at']
-        ref_name = 'MainReview'  # чтобы не конфликтовать
+        read_only_fields = ['user', 'created_at', 'updated_at']
+        ref_name = 'MainReview'
 
-    def validate(self, data):
-        if not data.get('hall') and not data.get('club'):
-            raise serializers.ValidationError(
-                "Должен быть указан либо зал, либо клуб"
-            )
-        return data
 
 
 class HallDetailSerializer(HallSerializer):
@@ -67,3 +61,26 @@ class ClubDetailSerializer(ClubSerializer):
 
     class Meta(ClubSerializer.Meta):
         fields = ClubSerializer.Meta.fields + ['reviews']
+
+from rest_framework import serializers
+from users.models import Review
+
+class AdminReviewSerializer(serializers.ModelSerializer):
+    user_info = serializers.SerializerMethodField()
+    trainer_name = serializers.CharField(source='trainer.first_name', read_only=True)
+    club_name = serializers.CharField(source='club.title', read_only=True)
+
+    def get_user_info(self, obj):
+        return {
+            'username': obj.user.username,
+            'email': obj.user.email
+        }
+
+    class Meta:
+        model = Review
+        fields = [
+            'id', 'user', 'user_info', 'trainer', 'trainer_name',
+            'club', 'club_name', 'text', 'rating', 'created_at', 'updated_at'
+        ]
+        read_only_fields = ['id', 'user_info', 'trainer_name', 'club_name', 'created_at']
+        ref_name = 'AdminReview'

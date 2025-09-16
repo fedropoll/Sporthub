@@ -5,6 +5,7 @@ from datetime import timedelta
 from django.contrib.postgres.fields import ArrayField
 
 
+
 # --- Пользовательский профиль ---
 class UserProfile(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='userprofile')
@@ -74,7 +75,6 @@ class Ad(models.Model):
         return self.title
 
 
-# --- Залы (Hall) ---
 class Hall(models.Model):
     title = models.CharField(max_length=100)
     sport = models.CharField(max_length=50)
@@ -90,21 +90,27 @@ class Hall(models.Model):
     has_lighting = models.BooleanField(default=False)
     has_shower = models.BooleanField(default=False)
     images = models.JSONField(blank=True, null=True)
-
-    def __str__(self):
-        return self.title
+    video_url = models.URLField(blank=True, null=True)
 
 
 # --- Клубы (Club) ---
 class Club(models.Model):
     title = models.CharField(max_length=100)
     sport = models.CharField(max_length=50)
+    hall = models.ForeignKey(Hall, on_delete=models.SET_NULL, null=True, blank=True)
     description = models.TextField(blank=True, null=True)
     address = models.CharField(max_length=200)
-    price_per_hour = models.PositiveIntegerField()
+    price_per_month = models.PositiveIntegerField(null=True, blank=True)  # вместо price_per_hour
+    coach = models.CharField(max_length=100, blank=True, null=True)
+    contact_phone = models.CharField(max_length=20, blank=True, null=True)
+    training_schedule = models.JSONField(blank=True, null=True)  # или другой тип
+    age_groups = models.CharField(max_length=100, blank=True, null=True)
+    logo = models.URLField(blank=True, null=True)
+    video_url = models.URLField(blank=True, null=True)
 
     def __str__(self):
         return self.title
+
 
 
 # --- Запись в клуб (Joinclub) ---
@@ -163,19 +169,6 @@ class Attendance(models.Model):
         return f"{self.joinclub.user} - {self.joinclub.schedule.title} on {self.attendance_date}"
 
 
-# --- Отзывы (Review) ---
-class Review(models.Model):
-    user = models.ForeignKey(User, on_delete=models.CASCADE)
-    trainer = models.ForeignKey(Trainer, on_delete=models.CASCADE, null=True, blank=True)
-    club = models.ForeignKey('Club', on_delete=models.CASCADE, null=True, blank=True)
-    text = models.TextField()
-    rating = models.PositiveSmallIntegerField(choices=[(i, str(i)) for i in range(1, 6)], default=5)
-    created_at = models.DateTimeField(auto_now_add=True)
-
-    def __str__(self):
-        return f"Отзыв от {self.user.username}"
-
-
 # --- Уведомления (Notification) ---
 class Notification(models.Model):
     MESSAGE_TYPES = (
@@ -189,9 +182,23 @@ class Notification(models.Model):
     is_read = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
 
-
-
-
-
     def __str__(self):
         return f"[{self.get_type_display()}] - {self.message}"
+
+class Review(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    trainer = models.ForeignKey(Trainer, on_delete=models.CASCADE, null=True, blank=True)
+    club = models.ForeignKey('Club', on_delete=models.CASCADE, null=True, blank=True, related_name='reviews')
+    hall = models.ForeignKey('Hall', on_delete=models.CASCADE, null=True, blank=True, related_name='reviews')
+    text = models.TextField()
+    rating = models.PositiveSmallIntegerField(choices=[(i, str(i)) for i in range(1, 6)], default=5)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"Отзыв от {self.user.username}"
+

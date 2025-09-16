@@ -1115,3 +1115,4 @@ class AttendanceView(APIView):
             'success': True,
             'data': attendance_data
         }, status=status.HTTP_200_OK)
+
