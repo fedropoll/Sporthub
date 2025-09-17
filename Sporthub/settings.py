@@ -8,7 +8,11 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # ===== SECRET & DEBUG =====
 SECRET_KEY = os.getenv('SECRET_KEY', 'dev-secret-key')
 DEBUG = os.getenv('DEBUG', 'True') == 'True'
-ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', '*').split(',')
+ALLOWED_HOSTS = [
+    "sporthub-production.up.railway.app",
+    "localhost",
+    "127.0.0.1",
+]
 
 # ===== DATABASE =====
 if os.getenv('USE_SQLITE', 'True') == 'True':
