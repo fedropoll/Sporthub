@@ -159,3 +159,8 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 # if not DEBUG else оставить дефолт
 if not DEBUG:
     STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
+
+
+CSRF_TRUSTED_ORIGINS = [
+    "https://sporthub-production.up.railway.app",
+]
