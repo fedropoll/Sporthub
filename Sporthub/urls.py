@@ -7,9 +7,9 @@ from django.views.generic import RedirectView
 
 schema_view = get_schema_view(
     openapi.Info(
-        title="МИРБА 'не' ГЕЙ",
+        title="Swagger Openapi",
         default_version='v1',
-        description="МИРБА натурал",
+        description="Swagger",
     ),
     public=True,
     permission_classes=(permissions.AllowAny,),
