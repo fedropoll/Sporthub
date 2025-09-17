@@ -5,6 +5,7 @@ from datetime import timedelta
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
+# ===== SECRET & DEBUG =====
 SECRET_KEY = os.getenv('SECRET_KEY', 'dev-secret-key')
 DEBUG = os.getenv('DEBUG', 'True') == 'True'
 ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', '*').split(',')
@@ -20,7 +21,9 @@ if os.getenv('USE_SQLITE', 'True') == 'True':
 else:
     DATABASES = {
         'default': dj_database_url.config(
-            default=os.getenv('DATABASE_URL'), conn_max_age=600, ssl_require=True
+            default=os.getenv('DATABASE_URL'),
+            conn_max_age=600,
+            ssl_require=True
         )
     }
 
@@ -50,14 +53,24 @@ MIDDLEWARE = [
 ]
 
 # ===== CORS =====
-CORS_ALLOW_ALL_ORIGINS = True  # на время разработки
-# для продакшена можно использовать CORS_ALLOWED_ORIGINS = ["https://yourdomain.com"]
+# На время разработки можно True, в продакшене лучше ограничить
+CORS_ALLOW_ALL_ORIGINS = os.getenv('CORS_ALLOW_ALL', 'True') == 'True'
+CORS_ALLOWED_ORIGINS = [
+    "https://sporthub-production.up.railway.app",
+    "http://127.0.0.1:8000",
+    "http://localhost:8000",
+]
+
+# ===== CSRF =====
+CSRF_TRUSTED_ORIGINS = [
+    "https://sporthub-production.up.railway.app",
+]
 
 # ===== EMAIL =====
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 EMAIL_HOST = os.getenv('EMAIL_HOST')
 EMAIL_PORT = int(os.getenv('EMAIL_PORT', 587))
-EMAIL_USE_TLS = os.getenv('EMAIL_USE_TLS') == 'True'
+EMAIL_USE_TLS = os.getenv('EMAIL_USE_TLS', 'True') == 'True'
 EMAIL_HOST_USER = os.getenv('EMAIL_HOST_USER')
 EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD')
 
@@ -70,6 +83,7 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
 
+    # CORS
     'corsheaders',
 
     # Сторонние
@@ -152,14 +166,7 @@ LOGGING = {
     'root': {'handlers': ['console'], 'level': 'WARNING'},
 }
 
+# ===== STATICFILES_STORAGE =====
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
-
-# Для продакшена можно добавить:
-# STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
-# if not DEBUG else оставить дефолт
 if not DEBUG:
     STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
-
-CSRF_TRUSTED_ORIGINS = [
-    "https://sporthub-production.up.railway.app",
-]
