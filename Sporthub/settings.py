@@ -55,13 +55,13 @@ MIDDLEWARE = [
 # ===== CORS =====
 # На время разработки можно True, в продакшене лучше ограничить
 # ===== CORS =====
-CORS_ALLOW_ALL_ORIGINS = False  # оставляем False для продакшена
-CORS_ALLOWED_ORIGINS = [
-    "https://sporthub-production.up.railway.app",
-]
-CSRF_TRUSTED_ORIGINS = [
-    "https://sporthub-production.up.railway.app",
-]
+# CORS_ALLOW_ALL_ORIGINS = False  # оставляем False для продакшена
+# CORS_ALLOWED_ORIGINS = [
+#     "https://sporthub-production.up.railway.app",
+# ]
+# CSRF_TRUSTED_ORIGINS = [
+#     "https://sporthub-production.up.railway.app",
+# ]
 
 
 
@@ -145,18 +145,17 @@ SIMPLE_JWT = {
 
 # ===== SWAGGER =====
 SWAGGER_SETTINGS = {
-    'SECURITY_DEFINITIONS': {
-        'Bearer': {
-            'type': 'apiKey',
-            'name': 'Authorization',
-            'in': 'header',
-            'description': 'Вставьте токен прямо (Bearer)',
+    "USE_SESSION_AUTH": False,
+    "SECURITY_DEFINITIONS": {
+        "Bearer": {
+            "type": "apiKey",
+            "name": "Authorization",
+            "in": "header",
         }
     },
-    'USE_SESSION_AUTH': False,
-    'PERSIST_AUTH': True,
-    'STATIC_URL': STATIC_URL,
 }
+
+
 
 # ===== LOGGING =====
 LOGGING = {
@@ -170,4 +169,11 @@ LOGGING = {
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 if not DEBUG:
     STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
+
+# ===== CORS =====
+CORS_ALLOW_ALL_ORIGINS = True  # временно, чтобы Swagger работал
+
+CORS_ALLOWED_ORIGINS = [
+    "https://sporthub-production.up.railway.app",
+]
 
