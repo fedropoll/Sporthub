@@ -171,9 +171,14 @@ if not DEBUG:
     STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
 # ===== CORS =====
-CORS_ALLOW_ALL_ORIGINS = True  # временно, чтобы Swagger работал
+CORS_ALLOW_ALL_ORIGINS = True  # оставь для теста, потом лучше отключи
 
-CORS_ALLOWED_ORIGINS = [
+# если захочешь ограничить, используй:
+# CORS_ALLOWED_ORIGINS = [
+#     "https://sporthub-production.up.railway.app",
+# ]
+
+CSRF_TRUSTED_ORIGINS = [
     "https://sporthub-production.up.railway.app",
 ]
 
