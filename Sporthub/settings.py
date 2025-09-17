@@ -3,14 +3,13 @@ import dj_database_url
 from pathlib import Path
 from datetime import timedelta
 
-
-
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 SECRET_KEY = os.getenv('SECRET_KEY', 'dev-secret-key')
 DEBUG = os.getenv('DEBUG', 'True') == 'True'
 ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', '*').split(',')
 
+# ===== DATABASE =====
 if os.getenv('USE_SQLITE', 'True') == 'True':
     DATABASES = {
         'default': {
@@ -20,22 +19,28 @@ if os.getenv('USE_SQLITE', 'True') == 'True':
     }
 else:
     DATABASES = {
-        'default': dj_database_url.config(default=os.getenv('DATABASE_URL'), conn_max_age=600, ssl_require=True)
+        'default': dj_database_url.config(
+            default=os.getenv('DATABASE_URL'), conn_max_age=600, ssl_require=True
+        )
     }
 
 # ===== STATIC & MEDIA =====
 STATIC_URL = '/static/'
-STATIC_ROOT = BASE_DIR / 'staticfiles'  # для collectstatic
+STATIC_ROOT = BASE_DIR / 'staticfiles'
 STATICFILES_DIRS = [BASE_DIR / 'static']
 
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
 
+# Создаём папку static если нет
+if not os.path.exists(BASE_DIR / 'static'):
+    os.makedirs(BASE_DIR / 'static')
+
 # ===== MIDDLEWARE =====
 MIDDLEWARE = [
-    'corsheaders.middleware.CorsMiddleware',  # <- первая
+    'corsheaders.middleware.CorsMiddleware',  # обязательно первой
     'django.middleware.security.SecurityMiddleware',
-    'whitenoise.middleware.WhiteNoiseMiddleware',  # для статики на проде
+    'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -44,9 +49,9 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 
-# whitenoise только для продакшена
-if not DEBUG:
-    STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
+# ===== CORS =====
+CORS_ALLOW_ALL_ORIGINS = True  # на время разработки
+# для продакшена можно использовать CORS_ALLOWED_ORIGINS = ["https://yourdomain.com"]
 
 # ===== EMAIL =====
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
@@ -56,7 +61,7 @@ EMAIL_USE_TLS = os.getenv('EMAIL_USE_TLS') == 'True'
 EMAIL_HOST_USER = os.getenv('EMAIL_HOST_USER')
 EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD')
 
-# ===== APPS =====
+# ===== INSTALLED APPS =====
 INSTALLED_APPS = [
     'django.contrib.admin',
     'django.contrib.auth',
@@ -124,7 +129,7 @@ SIMPLE_JWT = {
     'AUTH_HEADER_TYPES': ['Bearer'],
 }
 
-# ===== Swagger =====
+# ===== SWAGGER =====
 SWAGGER_SETTINGS = {
     'SECURITY_DEFINITIONS': {
         'Bearer': {
@@ -139,7 +144,7 @@ SWAGGER_SETTINGS = {
     'STATIC_URL': STATIC_URL,
 }
 
-# ===== Логирование =====
+# ===== LOGGING =====
 LOGGING = {
     'version': 1,
     'disable_existing_loggers': False,
@@ -149,12 +154,8 @@ LOGGING = {
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-CORS_ALLOW_ALL_ORIGINS = False
-
-CORS_ALLOWED_ORIGINS = [
-    "https://sporthub-production.up.railway.app",
-    "http://127.0.0.1:8000",
-    "http://localhost:8000",
-]
-
-
+# Для продакшена можно добавить:
+# STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
+# if not DEBUG else оставить дефолт
+if not DEBUG:
+    STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
