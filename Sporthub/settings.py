@@ -4,6 +4,7 @@ from pathlib import Path
 from datetime import timedelta
 
 
+
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 SECRET_KEY = os.getenv('SECRET_KEY', 'dev-secret-key')
@@ -32,6 +33,7 @@ MEDIA_ROOT = BASE_DIR / 'media'
 
 # ===== MIDDLEWARE =====
 MIDDLEWARE = [
+    'corsheaders.middleware.CorsMiddleware',  # <- первая
     'django.middleware.security.SecurityMiddleware',
     'whitenoise.middleware.WhiteNoiseMiddleware',  # для статики на проде
     'django.contrib.sessions.middleware.SessionMiddleware',
@@ -62,6 +64,8 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+
+    'corsheaders',
 
     # Сторонние
     'rest_framework',
@@ -144,6 +148,8 @@ LOGGING = {
 }
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+CORS_ALLOW_ALL_ORIGINS = True
 
 CORS_ALLOWED_ORIGINS = [
     "https://sporthub-production.up.railway.app",
