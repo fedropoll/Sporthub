@@ -54,16 +54,17 @@ MIDDLEWARE = [
 
 # ===== CORS =====
 # На время разработки можно True, в продакшене лучше ограничить
-CORS_ALLOW_ALL_ORIGINS = os.getenv('CORS_ALLOW_ALL', 'True') == 'True'
+# ===== CORS =====
+CORS_ALLOW_ALL_ORIGINS = False  # оставляем False для продакшена
+CORS_ALLOWED_ORIGINS = [
+    "https://sporthub-production.up.railway.app",
+]
 CSRF_TRUSTED_ORIGINS = [
     "https://sporthub-production.up.railway.app",
 ]
 
 
-# ===== CSRF =====
-CSRF_TRUSTED_ORIGINS = [
-    "https://sporthub-production.up.railway.app",
-]
+
 
 # ===== EMAIL =====
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
@@ -169,3 +170,4 @@ LOGGING = {
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 if not DEBUG:
     STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
+
