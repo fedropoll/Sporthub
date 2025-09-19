@@ -1,35 +1,27 @@
 import os
-import dj_database_url
 from pathlib import Path
 from datetime import timedelta
+import dj_database_url
+from dotenv import load_dotenv
+
+# ===== Загрузка .env =====
+load_dotenv()
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 # ===== SECRET & DEBUG =====
-SECRET_KEY = os.getenv('SECRET_KEY', 'dev-secret-key')
-DEBUG = os.getenv('DEBUG', 'True') == 'True'
-ALLOWED_HOSTS = [
-    "sporthub-production.up.railway.app",
-    "localhost",
-    "127.0.0.1",
-]
+SECRET_KEY = os.getenv("SECRET_KEY", "dev-secret-key")
+DEBUG = os.getenv("DEBUG", "True") == "True"
+ALLOWED_HOSTS = os.getenv("ALLOWED_HOSTS", "localhost").split(",")
 
 # ===== DATABASE =====
-if os.getenv('USE_SQLITE', 'True') == 'True':
-    DATABASES = {
-        'default': {
-            'ENGINE': 'django.db.backends.sqlite3',
-            'NAME': BASE_DIR / 'db.sqlite3',
-        }
-    }
-else:
-    DATABASES = {
-        'default': dj_database_url.config(
-            default=os.getenv('DATABASE_URL'),
-            conn_max_age=600,
-            ssl_require=True
-        )
-    }
+DATABASES = {
+    'default': dj_database_url.config(
+        default=os.getenv("DATABASE_URL"),
+        conn_max_age=600,
+        ssl_require=False  # Railway обычно без SSL
+    )
+}
 
 # ===== STATIC & MEDIA =====
 STATIC_URL = '/static/'
@@ -57,26 +49,15 @@ MIDDLEWARE = [
 ]
 
 # ===== CORS =====
-# На время разработки можно True, в продакшене лучше ограничить
-# ===== CORS =====
-# CORS_ALLOW_ALL_ORIGINS = False  # оставляем False для продакшена
-# CORS_ALLOWED_ORIGINS = [
-#     "https://sporthub-production.up.railway.app",
-# ]
-# CSRF_TRUSTED_ORIGINS = [
-#     "https://sporthub-production.up.railway.app",
-# ]
-
-
-
+CORS_ALLOW_ALL_ORIGINS = True  # для теста
 
 # ===== EMAIL =====
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
-EMAIL_HOST = os.getenv('EMAIL_HOST')
-EMAIL_PORT = int(os.getenv('EMAIL_PORT', 587))
-EMAIL_USE_TLS = os.getenv('EMAIL_USE_TLS', 'True') == 'True'
-EMAIL_HOST_USER = os.getenv('EMAIL_HOST_USER')
-EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD')
+EMAIL_HOST = os.getenv("EMAIL_HOST")
+EMAIL_PORT = int(os.getenv("EMAIL_PORT", 587))
+EMAIL_USE_TLS = os.getenv("EMAIL_USE_TLS", "True") == "True"
+EMAIL_HOST_USER = os.getenv("EMAIL_HOST_USER")
+EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD")
 
 # ===== INSTALLED APPS =====
 INSTALLED_APPS = [
@@ -124,15 +105,9 @@ WSGI_APPLICATION = 'Sporthub.wsgi.application'
 
 # ===== REST FRAMEWORK =====
 REST_FRAMEWORK = {
-    'DEFAULT_PERMISSION_CLASSES': [
-        'rest_framework.permissions.AllowAny',
-    ],
-    'DEFAULT_RENDERER_CLASSES': [
-        'rest_framework.renderers.JSONRenderer',
-    ],
-    'DEFAULT_AUTHENTICATION_CLASSES': [
-        'rest_framework_simplejwt.authentication.JWTAuthentication',
-    ],
+    'DEFAULT_PERMISSION_CLASSES': ['rest_framework.permissions.AllowAny'],
+    'DEFAULT_RENDERER_CLASSES': ['rest_framework.renderers.JSONRenderer'],
+    'DEFAULT_AUTHENTICATION_CLASSES': ['rest_framework_simplejwt.authentication.JWTAuthentication'],
 }
 
 # ===== JWT =====
@@ -159,8 +134,6 @@ SWAGGER_SETTINGS = {
     },
 }
 
-
-
 # ===== LOGGING =====
 LOGGING = {
     'version': 1,
@@ -173,16 +146,3 @@ LOGGING = {
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 if not DEBUG:
     STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
-
-# ===== CORS =====
-CORS_ALLOW_ALL_ORIGINS = True  # оставь для теста, потом лучше отключи
-
-# если захочешь ограничить, используй:
-# CORS_ALLOWED_ORIGINS = [
-#     "https://sporthub-production.up.railway.app",
-# ]
-
-CSRF_TRUSTED_ORIGINS = [
-    "https://sporthub-production.up.railway.app",
-]
-
