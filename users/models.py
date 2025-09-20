@@ -5,10 +5,27 @@ from datetime import timedelta
 from django.contrib.postgres.fields import ArrayField
 
 
+# Роли пользователей
+class UserRole:
+    ADMIN = 'admin'
+    TRAINER = 'trainer'
+    USER = 'user'
+    
+    CHOICES = [
+        (ADMIN, 'Администратор'),
+        (TRAINER, 'Тренер'),
+        (USER, 'Пользователь'),
+    ]
 
 # --- Пользовательский профиль ---
 class UserProfile(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='userprofile')
+    role = models.CharField(
+        max_length=20, 
+        choices=UserRole.CHOICES, 
+        default=UserRole.USER,
+        verbose_name='Роль пользователя'
+    )
     first_name = models.CharField(max_length=50, null=True, blank=True)
     last_name = models.CharField(max_length=50, null=True, blank=True)
     phone_number = models.CharField(max_length=20, null=True, blank=True)
@@ -22,6 +39,22 @@ class UserProfile(models.Model):
 
     def __str__(self):
         return f"{self.first_name} {self.last_name}"
+        
+    @property
+    def is_admin(self):
+        return self.role == UserRole.ADMIN
+        
+    @property
+    def is_trainer(self):
+        return self.role == UserRole.TRAINER
+        
+    @property
+    def is_user(self):
+        return self.role == UserRole.USER
+
+    class Meta:
+        verbose_name = 'Профиль пользователя'
+        verbose_name_plural = 'Профили пользователей'
 
 
 # --- Код для сброса пароля ---
@@ -37,7 +70,6 @@ class PasswordResetCode(models.Model):
 
 # --- Расписание занятий ---
 class ClassSchedule(models.Model):
-    # Эта модель, вероятно, должна содержать расписание для клубов или залов
     title = models.CharField(max_length=100)
     day_of_week = models.CharField(max_length=10, choices=(
         ('Monday', 'Понедельник'), ('Tuesday', 'Вторник'), ('Wednesday', 'Среда'),
@@ -112,7 +144,6 @@ class Club(models.Model):
         return self.title
 
 
-
 # --- Запись в клуб (Joinclub) ---
 class Joinclub(models.Model):
     user = models.ForeignKey(UserProfile, on_delete=models.CASCADE)
@@ -164,7 +195,6 @@ class Attendance(models.Model):
     class Meta:
         verbose_name_plural = "Attendances"
 
-
     def __str__(self):
         return f"{self.joinclub.user} - {self.joinclub.schedule.title} on {self.attendance_date}"
 
@@ -195,10 +225,10 @@ class Review(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
-
     class Meta:
         ordering = ['-created_at']
+        verbose_name = 'Отзыв'
+        verbose_name_plural = 'Отзывы'
 
     def __str__(self):
         return f"Отзыв от {self.user.username}"
-

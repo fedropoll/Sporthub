@@ -10,11 +10,9 @@ from django.shortcuts import get_object_or_404
 from drf_yasg.utils import swagger_auto_schema
 from drf_yasg import openapi
 from rest_framework_simplejwt.views import TokenObtainPairView
-from .utils.tokens import create_jwt_tokens_for_user, get_user_from_token
-
 from .models import (
     UserProfile, PasswordResetCode, Trainer, Hall, Club, Ad, Review, Notification,
-    ClassSchedule, Joinclub, Attendance
+    ClassSchedule, Joinclub, Attendance, UserRole
 )
 from .serializers import (
     UserSerializer, RegisterSerializer, VerifyCodeSerializer, LoginSerializer,
@@ -25,6 +23,8 @@ from .serializers import (
 )
 from .utils import generate_and_send_code
 from .utils.tokens import create_jwt_tokens_for_user, get_user_from_token
+from .exceptions import AuthenticationFailed, ValidationError
+from .handlers import custom_exception_handler
 
 import logging
 import datetime
@@ -41,8 +41,8 @@ class RegisterView(APIView):
         tags=['🔐 Аутентификация'],
         operation_summary="Регистрация нового пользователя",
         operation_description="""
-        Создаёт нового пользователя в системе. После успешной регистрации
-        на указанный email отправляется код подтверждения.
+        Регистрация нового пользователя в системе.
+        После успешной регистрации на email приходит код подтверждения.
         """,
         request_body=RegisterSerializer,
         responses={
@@ -50,36 +50,55 @@ class RegisterView(APIView):
                 'Успешная регистрация',
                 examples={
                     'application/json': {
-                        'success': True,
-                        'message': 'Код подтверждения отправлен на ваш email',
+                        'message': 'Код подтверждения отправлен на email',
                         'email': 'user@example.com'
                     }
                 }
             ),
-            400: openapi.Response(
-                'Ошибка валидации',
-                examples={
-                    'application/json': {
-                        'success': False,
-                        'errors': {'email': ['Этот email уже зарегистрирован']}
-                    }
-                }
-            )
+            400: 'Некорректные данные',
+            409: 'Пользователь с таким email уже существует'
         }
     )
     def post(self, request):
         serializer = RegisterSerializer(data=request.data)
         if serializer.is_valid():
-            user = serializer.save()
-            return Response({
-                "success": True,
-                "message": "Код подтверждения отправлен на ваш email",
-                "email": user.email
-            }, status=status.HTTP_201_CREATED)
-        return Response({
-            "success": False,
-            "errors": serializer.errors
-        }, status=status.HTTP_400_BAD_REQUEST)
+            email = serializer.validated_data['email']
+            
+            # Проверяем, существует ли пользователь с таким email
+            if User.objects.filter(email=email).exists():
+                return Response(
+                    {'error': 'Пользователь с таким email уже существует'},
+                    status=status.HTTP_409_CONFLICT
+                )
+            
+            # Создаем пользователя с ролью по умолчанию (USER)
+            user = User.objects.create_user(
+                username=email,
+                email=email,
+                password=serializer.validated_data['password'],
+                first_name=serializer.validated_data.get('first_name', ''),
+                last_name=serializer.validated_data.get('last_name', '')
+            )
+            
+            # Создаем профиль пользователя с ролью по умолчанию
+            UserProfile.objects.create(
+                user=user,
+                role=UserRole.USER,  # Устанавливаем роль по умолчанию
+                phone_number=serializer.validated_data.get('phone_number'),
+                birth_date=serializer.validated_data.get('birth_date')
+            )
+            
+            # Генерируем и отправляем код подтверждения
+            code = generate_and_send_code(email)
+            
+            return Response(
+                {
+                    'message': 'Код подтверждения отправлен на email',
+                    'email': email
+                },
+                status=status.HTTP_201_CREATED
+            )
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
 class VerifyCodeView(APIView):
@@ -149,72 +168,80 @@ class VerifyCodeView(APIView):
 
 
 class LoginView(APIView):
+    """
+    Аутентификация пользователя по email и паролю.
+    Возвращает access токен для аутентификации (без префикса Bearer).
+    """
     permission_classes = [AllowAny]
 
     @swagger_auto_schema(
         tags=['🔐 Аутентификация'],
-        operation_summary="Вход в аккаунт",
+        operation_summary="Вход в систему",
         operation_description="""
         Аутентификация пользователя по email и паролю.
+        
+        ### Использование токена:
+        Полученный токен используйте в заголовке Authorization без префикса Bearer:
+        ```
+        Authorization: ваш_токен_здесь
+        ```
+        
+        ### Коды ошибок:
+        - 400: Неверный формат запроса
+        - 401: Неверные учетные данные
+        - 403: Аккаунт не активирован
         """,
         request_body=LoginSerializer,
         responses={
             200: openapi.Response(
-                'Успешная аутентификация',
+                'Успешный вход',
                 examples={
                     'application/json': {
-                        'success': True,
-                        'tokens': {
-                            'refresh': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
-                            'access': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...'
-                        },
-                        'user': {
-                            'id': 1,
-                            'email': 'user@example.com',
-                            'first_name': 'Иван',
-                            'last_name': 'Иванов',
-                            'is_active': True,
-                            'is_staff': False
-                        }
+                        'access': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
                     }
                 }
             ),
-            400: openapi.Response(
-                'Ошибка аутентификации',
-                examples={
-                    'application/json': {
-                        'success': False,
-                        'error': 'Неверный email или пароль'
-                    }
-                }
-            )
+            400: 'Неверный формат запроса',
+            401: 'Неверные учетные данные',
+            403: 'Аккаунт не активирован'
         }
     )
     def post(self, request):
-        serializer = LoginSerializer(data=request.data)
-        if serializer.is_valid():
-            user = serializer.validated_data['user']
-
-            # Создаем УНИКАЛЬНЫЕ токены для каждого пользователя
-            tokens = create_jwt_tokens_for_user(user)
-
-            return Response({
-                'success': True,
-                'tokens': tokens,
-                'user': {
-                    'id': user.id,
-                    'email': user.email,
-                    "role": user.userprofile.role,
-                    'first_name': user.first_name,
-                    'last_name': user.last_name,
-                    'is_active': user.is_active,
-                    'is_staff': user.is_staff
-                }
-            })
-        return Response({
-            'success': False,
-            'error': 'Неверный email или пароль'
-        }, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            serializer = LoginSerializer(data=request.data)
+            if not serializer.is_valid():
+                raise ValidationError(detail={
+                    'errors': serializer.errors,
+                    'message': 'Неверный формат запроса'
+                })
+            
+            email = serializer.validated_data['email']
+            password = serializer.validated_data['password']
+            
+            try:
+                user = User.objects.get(email=email)
+                
+                if not user.check_password(password):
+                    raise AuthenticationFailed(detail='Неверный email или пароль')
+                
+                if not user.is_active:
+                    raise PermissionDenied(
+                        detail='Аккаунт не активирован. Пожалуйста, подтвердите email.',
+                        status_code=status.HTTP_403_FORBIDDEN
+                    )
+                
+                tokens = create_jwt_tokens_for_user(user)
+                
+                return Response({
+                    'access': tokens['access']
+                }, status=status.HTTP_200_OK)
+                
+            except User.DoesNotExist:
+                raise AuthenticationFailed(detail='Неверный email или пароль')
+                
+        except Exception as e:
+            logger.error(f"Ошибка при входе пользователя: {str(e)}", exc_info=True)
+            return custom_exception_handler(e, None)
 
 
 class ForgotPasswordView(APIView):
@@ -546,6 +573,8 @@ class UserProfileViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         return UserProfile.objects.filter(user=self.request.user)
+
+
 class ClientViewSet(viewsets.ModelViewSet):
     """
     API для управления клиентами.
@@ -635,9 +664,9 @@ class ClientViewSet(viewsets.ModelViewSet):
 
     @swagger_auto_schema(
         tags=['👥 Управление клиентами'],
-        operation_summary='Обновление данных клиента',
+        operation_summary='Обновить информацию о клиенте',
         operation_description="""
-        Полное обновление данных клиента.
+        Полное обновление информации о клиенте.
         
         ### Внимание:
         - Все поля, кроме указанных, будут перезаписаны значениями по умолчанию
@@ -651,7 +680,7 @@ class ClientViewSet(viewsets.ModelViewSet):
         tags=['👥 Управление клиентами'],
         operation_summary='Частичное обновление клиента',
         operation_description="""
-        Частичное обновление данных клиента.
+        Частичное обновление информации о клиенте.
         
         ### Пример запроса:
         ```json
@@ -1005,8 +1034,8 @@ class JoinclubView(APIView):
         tags=['🎉 Записи на занятия'],
         operation_summary="Получить список записей на кружки",
         operation_description="""
-           Возвращает список всех кружков, на которые записан текущий аутентифицированный
-           пользователь. Требуется авторизация.
+           Возвращает список всех кружков, на которые записан текущий
+           аутентифицированный пользователь. Требуется авторизация.
            """,
         responses={
             200: openapi.Response('Список записей', JoinclubSerializer(many=True)),
@@ -1117,3 +1146,20 @@ class AttendanceView(APIView):
             'data': attendance_data
         }, status=status.HTTP_200_OK)
 
+
+def create_jwt_tokens_for_user(user):
+    """
+    Генерация JWT токенов с информацией о роли пользователя
+    """
+    refresh = RefreshToken.for_user(user)
+    
+    # Добавляем информацию о пользователе в токен
+    if hasattr(user, 'userprofile'):
+        refresh['role'] = user.userprofile.role
+        refresh['first_name'] = user.first_name
+        refresh['last_name'] = user.last_name
+    
+    return {
+        'refresh': str(refresh),
+        'access': str(refresh.access_token),
+    }
