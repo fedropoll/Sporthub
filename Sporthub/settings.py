@@ -121,15 +121,15 @@ TEMPLATES = [
 ROOT_URLCONF = 'Sporthub.urls'
 WSGI_APPLICATION = 'Sporthub.wsgi.application'
 
-# ===== JWT Settings =====
 SIMPLE_JWT = {
     'ACCESS_TOKEN_LIFETIME': timedelta(days=3650),
     'REFRESH_TOKEN_LIFETIME': timedelta(days=3650),
-    'AUTH_HEADER_TYPES': (),  # пусто — токен без "Bearer"
+    'AUTH_HEADER_TYPES': ('',),  # токен без "Bearer"
     'AUTH_HEADER_NAME': 'HTTP_AUTHORIZATION',
     'USER_ID_FIELD': 'id',
     'USER_ID_CLAIM': 'user_id',
 }
+
 
 
 # ===== REST FRAMEWORK =====
