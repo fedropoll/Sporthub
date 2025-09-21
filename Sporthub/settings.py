@@ -134,7 +134,7 @@ SIMPLE_JWT = {
 # ===== REST FRAMEWORK =====
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': [
-        'rest_framework_simplejwt.authentication.JWTAuthentication',
+        'users.authentication.PlainJWTAuthentication',  # токен без Bearer
     ],
     'DEFAULT_PERMISSION_CLASSES': [
         'rest_framework.permissions.IsAuthenticated',
@@ -150,6 +150,7 @@ REST_FRAMEWORK = {
     'DEFAULT_SCHEMA_CLASS': 'rest_framework.schemas.coreapi.AutoSchema',
     'EXCEPTION_HANDLER': 'users.handlers.custom_exception_handler',
 }
+
 
 # ===== Обработчики ошибок =====
 HANDLER404 = 'users.handlers.handle_404_error'
