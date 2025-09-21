@@ -8,7 +8,7 @@ from .views import (
     ReviewViewSet, NotificationViewSet,
     ForgotPasswordView, ResetPasswordView, ResendCodeView,
     ClassScheduleView, JoinclubView, AttendanceView, GetRoleTokenView,
-    AdminChangeUserRoleView
+    AdminChangeUserRoleView, MyTokenObtainPairView
 )
 
 router = DefaultRouter()
@@ -22,6 +22,8 @@ router.register(r'notifications', NotificationViewSet, basename='notification')
 
 
 urlpatterns = [
+    path('api/token/', MyTokenObtainPairView.as_view(), name='token_obtain_pair'),
+
     path('auth/', include([
         path('register/', RegisterView.as_view(), name='register'),
         path('verify-code/', VerifyCodeView.as_view(), name='verify_code'),

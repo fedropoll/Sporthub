@@ -12,10 +12,22 @@ from .utils import generate_and_send_code
 
 User = get_user_model()
 
+class UserSerializer(serializers.ModelSerializer):
+    role = serializers.SerializerMethodField()  # вычисляемое поле
+
+    class Meta:
+        model = User
+        fields = ['username', 'email', 'first_name', 'last_name', 'phone_number', 'role']
+
+    def get_role(self, obj):
+        if hasattr(obj, 'userprofile'):
+            return obj.userprofile.role
+        return 'user'
+
+
 class MyTokenObtainPairSerializer(TokenObtainPairSerializer):
     def validate(self, attrs):
         data = super().validate(attrs)
-        # добавляем информацию о пользователе
         data['user'] = UserSerializer(self.user).data
         return data
 
@@ -32,18 +44,7 @@ class RoleTokenSerializer(serializers.Serializer):
     refresh_token = serializers.CharField()
     role = serializers.CharField()
 
-class UserSerializer(serializers.ModelSerializer):
-    role = serializers.SerializerMethodField()  # вычисляемое поле
 
-    class Meta:
-        model = User
-        fields = ['username', 'email', 'first_name', 'last_name', 'phone_number', 'role']
-
-    def get_role(self, obj):
-        # если есть userprofile — берём роль оттуда, иначе 'user'
-        if hasattr(obj, 'userprofile'):
-            return obj.userprofile.role
-        return 'user'
 
 class UserShortSerializer(serializers.ModelSerializer):
     class Meta:
