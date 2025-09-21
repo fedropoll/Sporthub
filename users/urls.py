@@ -23,7 +23,7 @@ router.register(r'notifications', NotificationViewSet, basename='notification')
 
 urlpatterns = [
     path('auth/', include([
-        path('auth/<str:role>/login/', RoleLoginView.as_view(), name='role-login'),
+        path('auth/role/login/', RoleLoginView.as_view(), name='role-login'),
         path('register/', RegisterView.as_view(), name='register'),
         path('verify-code/', VerifyCodeView.as_view(), name='verify_code'),
         path('login/', LoginView.as_view(), name='login'),
