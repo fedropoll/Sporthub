@@ -153,6 +153,7 @@ REST_FRAMEWORK = {
 }
 
 
+
 # ===== Обработчики ошибок =====
 HANDLER404 = 'users.handlers.handle_404_error'
 HANDLER500 = 'users.handlers.handle_500_error'
