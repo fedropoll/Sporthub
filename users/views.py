@@ -999,9 +999,6 @@ class NotificationViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
         serializer = self.get_serializer(queryset, many=True)
         return Response(serializer.data)
 
-    def get_queryset(self):
-        return Notification.objects.filter(user=self.request.user).order_by('-created_at')
-
 class ClassScheduleView(APIView):
     permission_classes = [IsAuthenticated]
 
