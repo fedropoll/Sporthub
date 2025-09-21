@@ -71,18 +71,6 @@ class RoleLoginView(APIView):
             }
         })
 
-class AdminLoginView(RoleLoginView):
-    def post(self, request):
-        return super().post(request, role="admin")
-
-class TrainerLoginView(RoleLoginView):
-    def post(self, request):
-        return super().post(request, role="trainer")
-
-class ClientLoginView(RoleLoginView):
-    def post(self, request):
-        return super().post(request, role="client")
-
 
 class AdminChangeUserRoleView(generics.UpdateAPIView):
     queryset = UserProfile.objects.all()
