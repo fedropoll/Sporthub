@@ -36,6 +36,28 @@ class MyLoginView(TokenObtainPairView):
 class RoleLoginView(APIView):
     permission_classes = [AllowAny]
 
+    @swagger_auto_schema(
+        tags=['🔐 Аутентификация'],
+        operation_summary="Вход в систему по роли",
+        request_body=LoginSerializer,   # 👈 вот это добавляем
+        responses={
+            200: openapi.Response(
+                'Успешный вход',
+                examples={
+                    'application/json': {
+                        'access': 'eyJhbGciOiJIUzI1...',
+                        'user': {
+                            'username': 'admin',
+                            'email': 'admin@gmail.com',
+                            'role': 'admin'
+                        }
+                    }
+                }
+            ),
+            401: 'Неверные учетные данные',
+            403: 'Нет доступа для этой роли'
+        }
+    )
     def post(self, request, role):
         serializer = LoginSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -52,11 +74,11 @@ class RoleLoginView(APIView):
             raise AuthenticationFailed('Неверный email или пароль')
 
         if not user.is_active:
-            raise PermissionDenied('Аккаунт не активирован. Пожалуйста, подтвердите email.')
+            raise PermissionDenied('Аккаунт не активирован. Подтвердите email.')
 
         profile = getattr(user, 'userprofile', None)
 
-        # проверка роли
+        # Проверка роли
         if profile and profile.role != role:
             raise PermissionDenied(f"У вас нет доступа к логину как {role}")
 
@@ -70,6 +92,15 @@ class RoleLoginView(APIView):
                 "role": profile.role if profile else None
             }
         })
+
+class AdminLoginView(RoleLoginView):
+    @swagger_auto_schema(
+        tags=['🔐 Аутентификация'],
+        operation_summary="Вход админа",
+        request_body=LoginSerializer
+    )
+    def post(self, request):
+        return super().post(request, role="admin")
 
 
 class AdminChangeUserRoleView(generics.UpdateAPIView):
