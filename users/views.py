@@ -33,6 +33,57 @@ logger = logging.getLogger(__name__)
 class MyLoginView(TokenObtainPairView):
     serializer_class = MyTokenObtainPairSerializer
 
+class RoleLoginView(APIView):
+    permission_classes = [AllowAny]
+
+    def post(self, request, role):
+        serializer = LoginSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        email = serializer.validated_data['email']
+        password = serializer.validated_data['password']
+
+        try:
+            user = User.objects.get(email=email)
+        except User.DoesNotExist:
+            raise AuthenticationFailed('Неверный email или пароль')
+
+        if not user.check_password(password):
+            raise AuthenticationFailed('Неверный email или пароль')
+
+        if not user.is_active:
+            raise PermissionDenied('Аккаунт не активирован. Пожалуйста, подтвердите email.')
+
+        profile = getattr(user, 'userprofile', None)
+
+        # проверка роли
+        if profile and profile.role != role:
+            raise PermissionDenied(f"У вас нет доступа к логину как {role}")
+
+        refresh = RefreshToken.for_user(user)
+
+        return Response({
+            "access": str(refresh.access_token),
+            "user": {
+                "username": user.username,
+                "email": user.email,
+                "role": profile.role if profile else None
+            }
+        })
+
+class AdminLoginView(RoleLoginView):
+    def post(self, request):
+        return super().post(request, role="admin")
+
+class TrainerLoginView(RoleLoginView):
+    def post(self, request):
+        return super().post(request, role="trainer")
+
+class ClientLoginView(RoleLoginView):
+    def post(self, request):
+        return super().post(request, role="client")
+
+
 class AdminChangeUserRoleView(generics.UpdateAPIView):
     queryset = UserProfile.objects.all()
     serializer_class = UserProfileSerializer
