@@ -28,8 +28,17 @@ class UserSerializer(serializers.ModelSerializer):
 class MyTokenObtainPairSerializer(TokenObtainPairSerializer):
     def validate(self, attrs):
         data = super().validate(attrs)
-        # Добавляем актуальную роль пользователя
-        role = getattr(self.user.userprofile, 'role', 'user') if hasattr(self.user, 'userprofile') else 'user'
+
+        # Определяем роль
+        if hasattr(self.user, 'userprofile') and self.user.userprofile.role:
+            role = self.user.userprofile.role
+        elif self.user.is_superuser:
+            role = 'admin'
+        elif self.user.is_staff:
+            role = 'staff'
+        else:
+            role = 'user'
+
         data['user'] = {
             'username': self.user.username,
             'first_name': self.user.first_name,
