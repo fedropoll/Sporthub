@@ -209,7 +209,7 @@ class LoginView(APIView):
                             'last_name': 'Фамилия',
                             'email': 'email@example.com',
                             'phone_number': '+77001234567',
-                            'role': 'user'
+                            'role': 'admin'
                         }
                     }
                 }
