@@ -188,27 +188,13 @@ class VerifyCodeView(APIView):
 class LoginView(APIView):
     """
     Аутентификация пользователя по email и паролю.
-    Возвращает access токен для аутентификации (без префикса Bearer).
+    Возвращает access токен и данные пользователя.
     """
     permission_classes = [AllowAny]
 
     @swagger_auto_schema(
         tags=['🔐 Аутентификация'],
         operation_summary="Вход в систему",
-        operation_description="""
-        Аутентификация пользователя по email и паролю.
-        
-        ### Использование токена:
-        Полученный токен используйте в заголовке Authorization без префикса Bearer:
-        ```
-        Authorization: ваш_токен_здесь
-        ```
-        
-        ### Коды ошибок:
-        - 400: Неверный формат запроса
-        - 401: Неверные учетные данные
-        - 403: Аккаунт не активирован
-        """,
         request_body=LoginSerializer,
         responses={
             200: openapi.Response(
@@ -216,6 +202,12 @@ class LoginView(APIView):
                 examples={
                     'application/json': {
                         'access': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
+                        'user': 'username',
+                        'first_name': 'Имя',
+                        'last_name': 'Фамилия',
+                        'email': 'email@example.com',
+                        'phone_number': '+77001234567',
+                        'role': 'user'
                     }
                 }
             ),
@@ -227,12 +219,7 @@ class LoginView(APIView):
     def post(self, request):
         try:
             serializer = LoginSerializer(data=request.data)
-            if not serializer.is_valid():
-                raise ValidationError(detail={
-                    'errors': serializer.errors,
-                    'message': 'Неверный формат запроса'
-                })
-
+            serializer.is_valid(raise_exception=True)
             email = serializer.validated_data['email']
             password = serializer.validated_data['password']
 
@@ -240,26 +227,33 @@ class LoginView(APIView):
                 user = User.objects.get(email=email)
 
                 if not user.check_password(password):
-                    raise AuthenticationFailed(detail='Неверный email или пароль')
+                    raise AuthenticationFailed('Неверный email или пароль')
 
                 if not user.is_active:
-                    raise PermissionDenied(
-                        detail='Аккаунт не активирован. Пожалуйста, подтвердите email.',
-                        status_code=status.HTTP_403_FORBIDDEN
-                    )
+                    raise PermissionDenied('Аккаунт не активирован. Пожалуйста, подтвердите email.')
 
-                tokens = create_jwt_tokens_for_user(user)
+                user_profile = user.userprofile
+                refresh = RefreshToken.for_user(user)
 
-                return Response({
-                    'access': tokens['access']
-                }, status=status.HTTP_200_OK)
+                data = {
+                    "access": str(refresh.access_token),
+                    "user": user.username,
+                    "first_name": user.first_name,
+                    "last_name": user.last_name,
+                    "email": user.email,
+                    "phone_number": user_profile.phone_number,
+                    "role": user_profile.role,
+                }
+
+                return Response(data, status=status.HTTP_200_OK)
 
             except User.DoesNotExist:
-                raise AuthenticationFailed(detail='Неверный email или пароль')
+                raise AuthenticationFailed('Неверный email или пароль')
 
         except Exception as e:
             logger.error(f"Ошибка при входе пользователя: {str(e)}", exc_info=True)
             return custom_exception_handler(e, None)
+
 
 
 class ForgotPasswordView(APIView):

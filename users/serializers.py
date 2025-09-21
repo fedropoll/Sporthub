@@ -10,6 +10,14 @@ from .utils import generate_and_send_code
 
 User = get_user_model()
 
+class LoginResponseSerializer(serializers.ModelSerializer):
+    access = serializers.CharField(read_only=True)
+
+    class Meta:
+        model = UserProfile
+        fields = ['access', 'user', 'first_name', 'last_name', 'email', 'phone_number', 'role']
+        read_only_fields = fields
+
 class RoleTokenSerializer(serializers.Serializer):
     access_token = serializers.CharField()
     refresh_token = serializers.CharField()
