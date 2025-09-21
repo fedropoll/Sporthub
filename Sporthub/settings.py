@@ -123,18 +123,19 @@ WSGI_APPLICATION = 'Sporthub.wsgi.application'
 
 # ===== JWT Settings =====
 SIMPLE_JWT = {
-    'ACCESS_TOKEN_LIFETIME': timedelta(days=3650),  # ~10 лет
+    'ACCESS_TOKEN_LIFETIME': timedelta(days=3650),
     'REFRESH_TOKEN_LIFETIME': timedelta(days=3650),
-    'AUTH_HEADER_TYPES': ('',),  # пусто — токен без "Bearer"
+    'AUTH_HEADER_TYPES': (),  # пусто — токен без "Bearer"
     'AUTH_HEADER_NAME': 'HTTP_AUTHORIZATION',
     'USER_ID_FIELD': 'id',
     'USER_ID_CLAIM': 'user_id',
 }
 
+
 # ===== REST FRAMEWORK =====
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': [
-        'users.authentication.PlainJWTAuthentication',  # токен без Bearer
+        'users.authentication.PlainJWTAuthentication',
     ],
     'DEFAULT_PERMISSION_CLASSES': [
         'rest_framework.permissions.IsAuthenticated',
@@ -192,7 +193,6 @@ LOGGING = {
     },
 }
 
-# ===== SWAGGER =====
 SWAGGER_SETTINGS = {
     'SECURITY_DEFINITIONS': {
         'Token': {
@@ -203,8 +203,6 @@ SWAGGER_SETTINGS = {
         },
     },
     'USE_SESSION_AUTH': False,
-    'JSON_EDITOR': True,
-    'DEFAULT_MODEL_RENDERING': 'example',
 }
 
 # ===== STATICFILES_STORAGE =====

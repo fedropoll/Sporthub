@@ -1,23 +1,18 @@
 # users/authentication.py
 from rest_framework_simplejwt.authentication import JWTAuthentication
-from rest_framework import exceptions
 
 class PlainJWTAuthentication(JWTAuthentication):
-    """
-    Принимает токен без префикса Bearer.
-    """
     def get_header(self, request):
         """
-        Переопределяем получение заголовка.
-        Берём токен из 'Authorization' без Bearer.
+        Берёт токен из заголовка Authorization без префикса.
         """
-        auth = request.META.get(self.header_name, b'')
+        auth = request.META.get('HTTP_AUTHORIZATION', b'')
         if isinstance(auth, str):
-            auth = auth.encode('utf-8')
-        return auth or None
+            return auth.encode("utf-8")
+        return auth
 
     def get_raw_token(self, header):
         """
-        Просто возвращаем заголовок как токен.
+        Просто возвращаем токен как есть, без разбора Bearer.
         """
-        return header.decode('utf-8')
+        return header

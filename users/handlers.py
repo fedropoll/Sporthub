@@ -3,6 +3,7 @@ from django.http import JsonResponse
 from rest_framework.views import exception_handler as drf_exception_handler
 from rest_framework import status
 from .exceptions import BaseAPIException
+from django.conf import settings
 
 logger = logging.getLogger(__name__)
 
