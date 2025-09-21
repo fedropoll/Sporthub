@@ -13,7 +13,7 @@ from .utils import generate_and_send_code
 User = get_user_model()
 
 class UserSerializer(serializers.ModelSerializer):
-    role = serializers.SerializerMethodField()  # вычисляемое поле
+    role = serializers.SerializerMethodField()
 
     class Meta:
         model = User
@@ -28,8 +28,18 @@ class UserSerializer(serializers.ModelSerializer):
 class MyTokenObtainPairSerializer(TokenObtainPairSerializer):
     def validate(self, attrs):
         data = super().validate(attrs)
-        data['user'] = UserSerializer(self.user).data
+        # Добавляем актуальную роль пользователя
+        role = getattr(self.user.userprofile, 'role', 'user') if hasattr(self.user, 'userprofile') else 'user'
+        data['user'] = {
+            'username': self.user.username,
+            'first_name': self.user.first_name,
+            'last_name': self.user.last_name,
+            'email': self.user.email,
+            'phone_number': getattr(self.user.userprofile, 'phone_number', None),
+            'role': role
+        }
         return data
+
 
 class LoginResponseSerializer(serializers.ModelSerializer):
     access = serializers.CharField(read_only=True)
