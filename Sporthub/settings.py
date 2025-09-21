@@ -136,10 +136,10 @@ SIMPLE_JWT = {
 # ===== REST FRAMEWORK =====
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': [
-        'users.authentication.PlainJWTAuthentication',
+        'rest_framework_simplejwt.authentication.JWTAuthentication',
     ],
     'DEFAULT_PERMISSION_CLASSES': [
-        'rest_framework.permissions.AllowAny',  # временно
+        'rest_framework.permissions.AllowAny',  # чтобы Swagger открывался
     ],
     'DEFAULT_RENDERER_CLASSES': [
         'rest_framework.renderers.JSONRenderer',
@@ -198,15 +198,16 @@ LOGGING = {
 
 SWAGGER_SETTINGS = {
     'SECURITY_DEFINITIONS': {
-        'Token': {
+        'Bearer': {
             'type': 'apiKey',
             'name': 'Authorization',
             'in': 'header',
-            'description': 'Введите токен без префикса. Пример: `eyJ0eXAiOiJKV1QiLCJhbGci...`',
+            'description': 'Введите токен с префиксом Bearer: "Bearer <ваш_токен>"',
         },
     },
     'USE_SESSION_AUTH': False,
 }
+
 
 
 # ===== STATICFILES_STORAGE =====
