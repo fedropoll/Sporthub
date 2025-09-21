@@ -8,6 +8,8 @@ from django.core.exceptions import ObjectDoesNotExist
 from django.shortcuts import get_object_or_404
 from drf_yasg.utils import swagger_auto_schema
 from drf_yasg import openapi
+from rest_framework_simplejwt.views import TokenObtainPairView
+
 from .models import (
     UserProfile, Trainer, Hall, Club, Ad, Review, Notification,
     ClassSchedule, Joinclub, UserRole
@@ -17,19 +19,20 @@ from .serializers import (
     UserProfileSerializer, TrainerSerializer, HallSerializer, ClubSerializer,
     AdSerializer, ReviewSerializer, NotificationSerializer, ClientDetailSerializer,
     ForgotPasswordSerializer, ResetPasswordSerializer, ClassScheduleSerializer,
-    JoinclubSerializer, RoleTokenSerializer
+    JoinclubSerializer, RoleTokenSerializer, MyTokenObtainPairSerializer
 )
 from .utils import generate_and_send_code
-from .utils.tokens import create_jwt_tokens_for_user, get_user_from_token
+from .utils.tokens import create_jwt_tokens_for_user
 from .exceptions import AuthenticationFailed, ValidationError, PermissionDenied
-from .handlers import custom_exception_handler
 
 import logging
-import datetime
 
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
+
+class MyTokenObtainPairView(TokenObtainPairView):
+    serializer_class = MyTokenObtainPairSerializer
 
 class AdminChangeUserRoleView(generics.UpdateAPIView):
     queryset = UserProfile.objects.all()

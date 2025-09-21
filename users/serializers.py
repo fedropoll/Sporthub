@@ -2,6 +2,8 @@ from rest_framework import serializers
 from django.contrib.auth import get_user_model
 from django.contrib.auth import authenticate
 from rest_framework.exceptions import ValidationError
+from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
+
 from .models import (
     UserProfile, PasswordResetCode, Ad, Hall, Club, Trainer,
     Review, Notification, ClassSchedule, Joinclub, Attendance
@@ -9,6 +11,13 @@ from .models import (
 from .utils import generate_and_send_code
 
 User = get_user_model()
+
+class MyTokenObtainPairSerializer(TokenObtainPairSerializer):
+    def validate(self, attrs):
+        data = super().validate(attrs)
+        # добавляем информацию о пользователе
+        data['user'] = UserSerializer(self.user).data
+        return data
 
 class LoginResponseSerializer(serializers.ModelSerializer):
     access = serializers.CharField(read_only=True)
@@ -24,11 +33,17 @@ class RoleTokenSerializer(serializers.Serializer):
     role = serializers.CharField()
 
 class UserSerializer(serializers.ModelSerializer):
+    role = serializers.SerializerMethodField()  # вычисляемое поле
+
     class Meta:
         model = User
-        fields = ['id', 'username', 'email', 'first_name', 'last_name']
-        read_only_fields = ['id', 'username']
+        fields = ['username', 'email', 'first_name', 'last_name', 'phone_number', 'role']
 
+    def get_role(self, obj):
+        # если есть userprofile — берём роль оттуда, иначе 'user'
+        if hasattr(obj, 'userprofile'):
+            return obj.userprofile.role
+        return 'user'
 
 class UserShortSerializer(serializers.ModelSerializer):
     class Meta:
