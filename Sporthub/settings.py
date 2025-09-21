@@ -124,11 +124,12 @@ WSGI_APPLICATION = 'Sporthub.wsgi.application'
 SIMPLE_JWT = {
     'ACCESS_TOKEN_LIFETIME': timedelta(days=3650),
     'REFRESH_TOKEN_LIFETIME': timedelta(days=3650),
-    'AUTH_HEADER_TYPES': ('',),  # токен без "Bearer"
+    'AUTH_HEADER_TYPES': ('Bearer',),  # вернули Bearer
     'AUTH_HEADER_NAME': 'HTTP_AUTHORIZATION',
     'USER_ID_FIELD': 'id',
     'USER_ID_CLAIM': 'user_id',
 }
+
 
 
 
@@ -201,11 +202,12 @@ SWAGGER_SETTINGS = {
             'type': 'apiKey',
             'name': 'Authorization',
             'in': 'header',
-            'description': 'Введите токен без префикса. Пример: `ваш_токен_здесь`',
+            'description': 'Введите токен без префикса. Пример: `eyJ0eXAiOiJKV1QiLCJhbGci...`',
         },
     },
     'USE_SESSION_AUTH': False,
 }
+
 
 # ===== STATICFILES_STORAGE =====
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
