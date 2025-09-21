@@ -123,17 +123,12 @@ WSGI_APPLICATION = 'Sporthub.wsgi.application'
 
 # ===== JWT Settings =====
 SIMPLE_JWT = {
-    'AUTH_HEADER_TYPES': ('',),  # Empty tuple means no prefix, just the token
+    'ACCESS_TOKEN_LIFETIME': timedelta(days=3650),  # ~10 лет
+    'REFRESH_TOKEN_LIFETIME': timedelta(days=3650),
+    'AUTH_HEADER_TYPES': ('',),  # пусто — токен без "Bearer"
     'AUTH_HEADER_NAME': 'HTTP_AUTHORIZATION',
     'USER_ID_FIELD': 'id',
     'USER_ID_CLAIM': 'user_id',
-    'USER_AUTHENTICATION_RULE': 'rest_framework_simplejwt.authentication.default_user_authentication_rule',
-
-    'AUTH_TOKEN_CLASSES': ('rest_framework_simplejwt.tokens.AccessToken',),
-    'TOKEN_TYPE_CLAIM': 'token_type',
-    'TOKEN_USER_CLASS': 'rest_framework_simplejwt.models.TokenUser',
-
-    'JTI_CLAIM': 'jti',
 }
 
 # ===== REST FRAMEWORK =====

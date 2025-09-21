@@ -217,43 +217,48 @@ class LoginView(APIView):
         }
     )
     def post(self, request):
+        serializer = LoginSerializer(data=request.data)
+        if not serializer.is_valid():
+            raise ValidationError({
+                'errors': serializer.errors,
+                'message': 'Неверный формат запроса'
+            })
+
+        email = serializer.validated_data['email']
+        password = serializer.validated_data['password']
+
         try:
-            serializer = LoginSerializer(data=request.data)
-            serializer.is_valid(raise_exception=True)
-            email = serializer.validated_data['email']
-            password = serializer.validated_data['password']
+            user = User.objects.get(email=email)
+        except User.DoesNotExist:
+            raise AuthenticationFailed('Неверный email или пароль')
 
-            try:
-                user = User.objects.get(email=email)
+        if not user.check_password(password):
+            raise AuthenticationFailed('Неверный email или пароль')
 
-                if not user.check_password(password):
-                    raise AuthenticationFailed('Неверный email или пароль')
+        if not user.is_active:
+            raise PermissionDenied('Аккаунт не активирован. Пожалуйста, подтвердите email.')
 
-                if not user.is_active:
-                    raise PermissionDenied('Аккаунт не активирован. Пожалуйста, подтвердите email.')
+        refresh = RefreshToken.for_user(user)
 
-                user_profile = user.userprofile
-                refresh = RefreshToken.for_user(user)
+        # Профиль пользователя
+        try:
+            profile = user.userprofile
+        except UserProfile.DoesNotExist:
+            profile = None
 
-                data = {
-                    "access": str(refresh.access_token),
-                    "user": user.username,
-                    "first_name": user.first_name,
-                    "last_name": user.last_name,
-                    "email": user.email,
-                    "phone_number": user_profile.phone_number,
-                    "role": user_profile.role,
-                }
+        data = {
+            "access": str(refresh.access_token),
+            "user": {
+                "username": user.username,
+                "first_name": user.first_name,
+                "last_name": user.last_name,
+                "email": user.email,
+                "phone_number": getattr(profile, 'phone_number', None),
+                "role": getattr(profile, 'role', None)
+            }
+        }
 
-                return Response(data, status=status.HTTP_200_OK)
-
-            except User.DoesNotExist:
-                raise AuthenticationFailed('Неверный email или пароль')
-
-        except Exception as e:
-            logger.error(f"Ошибка при входе пользователя: {str(e)}", exc_info=True)
-            return custom_exception_handler(e, None)
-
+        return Response(data, status=status.HTTP_200_OK)
 
 
 class ForgotPasswordView(APIView):
