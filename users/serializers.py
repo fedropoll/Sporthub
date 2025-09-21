@@ -2,7 +2,6 @@ from rest_framework import serializers
 from django.contrib.auth import get_user_model
 from django.contrib.auth import authenticate
 from rest_framework.exceptions import ValidationError
-from .utils import generate_and_send_code
 from .models import (
     UserProfile, PasswordResetCode, Ad, Hall, Club, Trainer,
     Review, Notification, ClassSchedule, Joinclub, Attendance
@@ -11,7 +10,10 @@ from .utils import generate_and_send_code
 
 User = get_user_model()
 
-
+class RoleTokenSerializer(serializers.Serializer):
+    access_token = serializers.CharField()
+    refresh_token = serializers.CharField()
+    role = serializers.CharField()
 
 class UserSerializer(serializers.ModelSerializer):
     class Meta:

@@ -1,29 +1,27 @@
-from rest_framework import viewsets, permissions, status, mixins
+from rest_framework import viewsets, permissions, status, mixins, generics
 from rest_framework.views import APIView
 from rest_framework.response import Response
-from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated, IsAdminUser, AllowAny
 from rest_framework_simplejwt.tokens import RefreshToken
-from django.contrib.auth.models import User, AnonymousUser
+from django.contrib.auth.models import User
 from django.core.exceptions import ObjectDoesNotExist
 from django.shortcuts import get_object_or_404
 from drf_yasg.utils import swagger_auto_schema
 from drf_yasg import openapi
-from rest_framework_simplejwt.views import TokenObtainPairView
 from .models import (
-    UserProfile, PasswordResetCode, Trainer, Hall, Club, Ad, Review, Notification,
-    ClassSchedule, Joinclub, Attendance, UserRole
+    UserProfile, Trainer, Hall, Club, Ad, Review, Notification,
+    ClassSchedule, Joinclub, UserRole
 )
 from .serializers import (
-    UserSerializer, RegisterSerializer, VerifyCodeSerializer, LoginSerializer,
+    RegisterSerializer, VerifyCodeSerializer, LoginSerializer,
     UserProfileSerializer, TrainerSerializer, HallSerializer, ClubSerializer,
     AdSerializer, ReviewSerializer, NotificationSerializer, ClientDetailSerializer,
     ForgotPasswordSerializer, ResetPasswordSerializer, ClassScheduleSerializer,
-    JoinclubSerializer, AttendanceSerializer
+    JoinclubSerializer, RoleTokenSerializer
 )
 from .utils import generate_and_send_code
 from .utils.tokens import create_jwt_tokens_for_user, get_user_from_token
-from .exceptions import AuthenticationFailed, ValidationError
+from .exceptions import AuthenticationFailed, ValidationError, PermissionDenied
 from .handlers import custom_exception_handler
 
 import logging
@@ -32,6 +30,26 @@ import datetime
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
+
+class AdminChangeUserRoleView(generics.UpdateAPIView):
+    queryset = UserProfile.objects.all()
+    serializer_class = UserProfileSerializer
+    permission_classes = [IsAdminUser]
+    lookup_field = 'id'
+
+class GetRoleTokenView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        user_profile = request.user.userprofile
+        refresh = RefreshToken.for_user(request.user)
+        data = {
+            'access_token': str(refresh.access_token),
+            'refresh_token': str(refresh),
+            'role': user_profile.role
+        }
+        serializer = RoleTokenSerializer(data)
+        return Response(serializer.data)
 
 # -------------------- AUTHENTICATION VIEWS --------------------
 class RegisterView(APIView):
@@ -63,14 +81,14 @@ class RegisterView(APIView):
         serializer = RegisterSerializer(data=request.data)
         if serializer.is_valid():
             email = serializer.validated_data['email']
-            
+
             # Проверяем, существует ли пользователь с таким email
             if User.objects.filter(email=email).exists():
                 return Response(
                     {'error': 'Пользователь с таким email уже существует'},
                     status=status.HTTP_409_CONFLICT
                 )
-            
+
             # Создаем пользователя с ролью по умолчанию (USER)
             user = User.objects.create_user(
                 username=email,
@@ -79,7 +97,7 @@ class RegisterView(APIView):
                 first_name=serializer.validated_data.get('first_name', ''),
                 last_name=serializer.validated_data.get('last_name', '')
             )
-            
+
             # Создаем профиль пользователя с ролью по умолчанию
             UserProfile.objects.create(
                 user=user,
@@ -87,10 +105,10 @@ class RegisterView(APIView):
                 phone_number=serializer.validated_data.get('phone_number'),
                 birth_date=serializer.validated_data.get('birth_date')
             )
-            
+
             # Генерируем и отправляем код подтверждения
             code = generate_and_send_code(email)
-            
+
             return Response(
                 {
                     'message': 'Код подтверждения отправлен на email',
@@ -214,31 +232,31 @@ class LoginView(APIView):
                     'errors': serializer.errors,
                     'message': 'Неверный формат запроса'
                 })
-            
+
             email = serializer.validated_data['email']
             password = serializer.validated_data['password']
-            
+
             try:
                 user = User.objects.get(email=email)
-                
+
                 if not user.check_password(password):
                     raise AuthenticationFailed(detail='Неверный email или пароль')
-                
+
                 if not user.is_active:
                     raise PermissionDenied(
                         detail='Аккаунт не активирован. Пожалуйста, подтвердите email.',
                         status_code=status.HTTP_403_FORBIDDEN
                     )
-                
+
                 tokens = create_jwt_tokens_for_user(user)
-                
+
                 return Response({
                     'access': tokens['access']
                 }, status=status.HTTP_200_OK)
-                
+
             except User.DoesNotExist:
                 raise AuthenticationFailed(detail='Неверный email или пароль')
-                
+
         except Exception as e:
             logger.error(f"Ошибка при входе пользователя: {str(e)}", exc_info=True)
             return custom_exception_handler(e, None)
@@ -1152,13 +1170,13 @@ def create_jwt_tokens_for_user(user):
     Генерация JWT токенов с информацией о роли пользователя
     """
     refresh = RefreshToken.for_user(user)
-    
+
     # Добавляем информацию о пользователе в токен
     if hasattr(user, 'userprofile'):
         refresh['role'] = user.userprofile.role
         refresh['first_name'] = user.first_name
         refresh['last_name'] = user.last_name
-    
+
     return {
         'refresh': str(refresh),
         'access': str(refresh.access_token),

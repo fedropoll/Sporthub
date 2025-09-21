@@ -4,7 +4,6 @@ from django.utils import timezone
 from datetime import timedelta
 from django.contrib.postgres.fields import ArrayField
 
-
 # Роли пользователей
 class UserRole:
     ADMIN = 'admin'

@@ -35,6 +35,24 @@ MEDIA_ROOT = BASE_DIR / 'media'
 if not os.path.exists(BASE_DIR / 'static'):
     os.makedirs(BASE_DIR / 'static')
 
+USE_SQLITE = os.getenv("USE_SQLITE", "False") == "True"
+
+if USE_SQLITE:
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.sqlite3',
+            'NAME': BASE_DIR / 'db.sqlite3',
+        }
+    }
+else:
+    DATABASES = {
+        'default': dj_database_url.config(
+            default=os.getenv("DATABASE_URL"),
+            conn_max_age=600,
+            ssl_require=False
+        )
+    }
+
 # ===== MIDDLEWARE =====
 MIDDLEWARE = [
     "corsheaders.middleware.CorsMiddleware",  # Должно быть первым
