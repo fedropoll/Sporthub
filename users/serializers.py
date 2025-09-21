@@ -29,26 +29,21 @@ class MyTokenObtainPairSerializer(TokenObtainPairSerializer):
     def validate(self, attrs):
         data = super().validate(attrs)
 
-        # Определяем роль
-        if hasattr(self.user, 'userprofile') and self.user.userprofile.role:
+        try:
             role = self.user.userprofile.role
-        elif self.user.is_superuser:
-            role = 'admin'
-        elif self.user.is_staff:
-            role = 'staff'
-        else:
-            role = 'user'
+        except UserProfile.DoesNotExist:
+            role = 'admin' if self.user.is_superuser or self.user.is_staff else 'user'
 
         data['user'] = {
-            'username': self.user.username,
-            'first_name': self.user.first_name,
-            'last_name': self.user.last_name,
-            'email': self.user.email,
-            'phone_number': getattr(self.user.userprofile, 'phone_number', None),
-            'role': role
+            "username": self.user.username,
+            "first_name": self.user.first_name,
+            "last_name": self.user.last_name,
+            "email": self.user.email,
+            "phone_number": getattr(self.user.userprofile, 'phone_number', None)
+            if hasattr(self.user, 'userprofile') else None,
+            "role": role
         }
         return data
-
 
 class LoginResponseSerializer(serializers.ModelSerializer):
     access = serializers.CharField(read_only=True)

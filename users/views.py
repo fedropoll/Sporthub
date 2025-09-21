@@ -186,7 +186,6 @@ class VerifyCodeView(APIView):
             'errors': serializer.errors
         }, status=status.HTTP_400_BAD_REQUEST)
 
-
 class LoginView(APIView):
     """
     Аутентификация пользователя по email и паролю.
@@ -204,12 +203,14 @@ class LoginView(APIView):
                 examples={
                     'application/json': {
                         'access': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
-                        'user': 'username',
-                        'first_name': 'Имя',
-                        'last_name': 'Фамилия',
-                        'email': 'email@example.com',
-                        'phone_number': '+77001234567',
-                        'role': 'user'
+                        'user': {
+                            'username': 'username',
+                            'first_name': 'Имя',
+                            'last_name': 'Фамилия',
+                            'email': 'email@example.com',
+                            'phone_number': '+77001234567',
+                            'role': 'user'
+                        }
                     }
                 }
             ),
@@ -242,11 +243,13 @@ class LoginView(APIView):
 
         refresh = RefreshToken.for_user(user)
 
-        # Профиль пользователя
+        # Определяем роль
         try:
             profile = user.userprofile
+            role = profile.role
         except UserProfile.DoesNotExist:
             profile = None
+            role = 'admin' if user.is_superuser or user.is_staff else 'user'
 
         data = {
             "access": str(refresh.access_token),
@@ -255,8 +258,8 @@ class LoginView(APIView):
                 "first_name": user.first_name,
                 "last_name": user.last_name,
                 "email": user.email,
-                "phone_number": getattr(profile, 'phone_number', None),
-                "role": getattr(profile, 'role', None)
+                "phone_number": getattr(profile, 'phone_number', None) if profile else None,
+                "role": role
             }
         }
 
