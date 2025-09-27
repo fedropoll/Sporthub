@@ -12,44 +12,34 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # ===== SECRET & DEBUG =====
 SECRET_KEY = os.getenv("SECRET_KEY", "dev-secret-key")
 DEBUG = os.getenv("DEBUG", "True").lower() in ("1", "true", "yes")
-ALLOWED_HOSTS = os.getenv("ALLOWED_HOSTS", "localhost").split(",")
+
+# ===== ALLOWED HOSTS =====
+ALLOWED_HOSTS = os.getenv("ALLOWED_HOSTS", "127.0.0.1,localhost").split(",")
+ALLOWED_HOSTS += ["62.72.33.230", "srv615768.hstgr.cloud"]
 
 # ===== DATABASE =====
-USE_SQLITE = os.getenv("USE_SQLITE", "").lower() in ("1", "true", "yes")
+DATABASES = {
+    "default": dj_database_url.config(
+        default=os.getenv("DATABASE_URL"),
+        conn_max_age=600,
+        ssl_require=False,
+    )
+}
 
-if USE_SQLITE:
-    DATABASES = {
-        "default": {
-            "ENGINE": "django.db.backends.sqlite3",
-            "NAME": BASE_DIR / "db.sqlite3",
-        }
-    }
-else:
-    DATABASES = {
-        "default": dj_database_url.config(
-            default=os.getenv("DATABASE_URL"),
-            conn_max_age=600,
-            ssl_require=False,  # Railway обычно без SSL
-        )
-    }
-
-# ===== STATIC & MEDIA =====
-STATIC_URL = "/static/"
-STATIC_ROOT = BASE_DIR / "staticfiles"
-STATICFILES_DIRS = [BASE_DIR / "static"]
+# ===== STATIC & MEDIA (статика отключена) =====
+STATIC_URL = None
+STATIC_ROOT = None
+STATICFILES_DIRS = []
 
 MEDIA_URL = "/media/"
 MEDIA_ROOT = BASE_DIR / "media"
-
-# Создаём папку static если нет
-if not os.path.exists(BASE_DIR / "static"):
-    os.makedirs(BASE_DIR / "static")
+if not os.path.exists(MEDIA_ROOT):
+    os.makedirs(MEDIA_ROOT)
 
 # ===== MIDDLEWARE =====
 MIDDLEWARE = [
-    "corsheaders.middleware.CorsMiddleware",  # Должно быть первым
+    "corsheaders.middleware.CorsMiddleware",  # должно быть первым
     "django.middleware.security.SecurityMiddleware",
-    "whitenoise.middleware.WhiteNoiseMiddleware",  # для статики
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
@@ -59,7 +49,7 @@ MIDDLEWARE = [
 ]
 
 # ===== CORS =====
-CORS_ALLOW_ALL_ORIGINS = True  # для теста
+CORS_ALLOW_ALL_ORIGINS = True
 
 # ===== EMAIL =====
 EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
@@ -76,19 +66,15 @@ INSTALLED_APPS = [
     "django.contrib.contenttypes",
     "django.contrib.sessions",
     "django.contrib.messages",
-    "django.contrib.staticfiles",
 
-    # CORS
     "corsheaders",
 
-    # Сторонние
     "rest_framework",
     "drf_yasg",
     "django_filters",
     "rest_framework_simplejwt",
     "rest_framework_simplejwt.token_blacklist",
 
-    # Ваши приложения
     "main",
     "users.apps.UsersConfig",
 ]
@@ -113,6 +99,7 @@ TEMPLATES = [
 ROOT_URLCONF = "Sporthub.urls"
 WSGI_APPLICATION = "Sporthub.wsgi.application"
 
+# ===== SIMPLE JWT =====
 SIMPLE_JWT = {
     "ACCESS_TOKEN_LIFETIME": timedelta(days=3650),
     "REFRESH_TOKEN_LIFETIME": timedelta(days=3650),
@@ -142,7 +129,7 @@ REST_FRAMEWORK = {
     "EXCEPTION_HANDLER": "users.handlers.custom_exception_handler",
 }
 
-# ===== Обработчики ошибок =====
+# ===== ERROR HANDLERS =====
 HANDLER404 = "users.handlers.handle_404_error"
 HANDLER500 = "users.handlers.handle_500_error"
 
@@ -194,8 +181,4 @@ SWAGGER_SETTINGS = {
     "USE_SESSION_AUTH": False,
 }
 
-# ===== STATICFILES_STORAGE =====
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
-if not DEBUG:
-    STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
-
