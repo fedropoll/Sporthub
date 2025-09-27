@@ -12,33 +12,40 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # ===== SECRET & DEBUG =====
 SECRET_KEY = os.getenv("SECRET_KEY", "dev-secret-key")
 DEBUG = os.getenv("DEBUG", "True").lower() in ("1", "true", "yes")
-
-# ===== ALLOWED HOSTS =====
-ALLOWED_HOSTS = os.getenv("ALLOWED_HOSTS", "127.0.0.1,localhost").split(",")
-ALLOWED_HOSTS += ["62.72.33.230", "srv615768.hstgr.cloud"]
+ALLOWED_HOSTS = os.getenv("ALLOWED_HOSTS", "localhost").split(",")
 
 # ===== DATABASE =====
-DATABASES = {
-    "default": dj_database_url.config(
-        default=os.getenv("DATABASE_URL"),
-        conn_max_age=600,
-        ssl_require=False,
-    )
-}
+USE_SQLITE = os.getenv("USE_SQLITE", "").lower() in ("1", "true", "yes")
 
-# ===== STATIC & MEDIA (статика отключена) =====
-STATIC_URL = None
-STATIC_ROOT = None
+if USE_SQLITE:
+    DATABASES = {
+        "default": {
+            "ENGINE": "django.db.backends.sqlite3",
+            "NAME": BASE_DIR / "db.sqlite3",
+        }
+    }
+else:
+    DATABASES = {
+        "default": dj_database_url.config(
+            default=os.getenv("DATABASE_URL"),
+            conn_max_age=600,
+            ssl_require=False,
+        )
+    }
+
+# ===== STATIC & MEDIA =====
+# Полностью игнорируем статические файлы
+STATIC_URL = "/static/"
 STATICFILES_DIRS = []
+STATIC_ROOT = None
 
 MEDIA_URL = "/media/"
 MEDIA_ROOT = BASE_DIR / "media"
-if not os.path.exists(MEDIA_ROOT):
-    os.makedirs(MEDIA_ROOT)
+os.makedirs(MEDIA_ROOT, exist_ok=True)
 
 # ===== MIDDLEWARE =====
 MIDDLEWARE = [
-    "corsheaders.middleware.CorsMiddleware",  # должно быть первым
+    "corsheaders.middleware.CorsMiddleware",
     "django.middleware.security.SecurityMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
@@ -66,9 +73,9 @@ INSTALLED_APPS = [
     "django.contrib.contenttypes",
     "django.contrib.sessions",
     "django.contrib.messages",
+    "django.contrib.staticfiles",  # нужно оставить для Swagger
 
     "corsheaders",
-
     "rest_framework",
     "drf_yasg",
     "django_filters",
@@ -99,12 +106,11 @@ TEMPLATES = [
 ROOT_URLCONF = "Sporthub.urls"
 WSGI_APPLICATION = "Sporthub.wsgi.application"
 
-# ===== SIMPLE JWT =====
+# ===== JWT =====
 SIMPLE_JWT = {
     "ACCESS_TOKEN_LIFETIME": timedelta(days=3650),
     "REFRESH_TOKEN_LIFETIME": timedelta(days=3650),
     "AUTH_HEADER_TYPES": ("Bearer",),
-    "AUTH_HEADER_NAME": "HTTP_AUTHORIZATION",
     "USER_ID_FIELD": "id",
     "USER_ID_CLAIM": "user_id",
 }
@@ -129,7 +135,7 @@ REST_FRAMEWORK = {
     "EXCEPTION_HANDLER": "users.handlers.custom_exception_handler",
 }
 
-# ===== ERROR HANDLERS =====
+# ===== HANDLERS =====
 HANDLER404 = "users.handlers.handle_404_error"
 HANDLER500 = "users.handlers.handle_500_error"
 
@@ -144,28 +150,12 @@ LOGGING = {
         },
     },
     "handlers": {
-        "console": {
-            "class": "logging.StreamHandler",
-            "formatter": "verbose",
-        },
-        "file": {
-            "level": "ERROR",
-            "class": "logging.FileHandler",
-            "filename": "debug.log",
-            "formatter": "verbose",
-        },
+        "console": {"class": "logging.StreamHandler", "formatter": "verbose"},
+        "file": {"level": "ERROR", "class": "logging.FileHandler", "filename": "debug.log", "formatter": "verbose"},
     },
     "loggers": {
-        "django": {
-            "handlers": ["console", "file"],
-            "level": "INFO",
-            "propagate": True,
-        },
-        "users": {
-            "handlers": ["console", "file"],
-            "level": "DEBUG" if DEBUG else "INFO",
-            "propagate": False,
-        },
+        "django": {"handlers": ["console", "file"], "level": "INFO", "propagate": True},
+        "users": {"handlers": ["console", "file"], "level": "DEBUG" if DEBUG else "INFO", "propagate": False},
     },
 }
 
