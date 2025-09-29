@@ -134,6 +134,12 @@ class Club(models.Model):
     price_per_month = models.PositiveIntegerField(null=True, blank=True)  # вместо price_per_hour
     coach = models.CharField(max_length=100, blank=True, null=True)
     contact_phone = models.CharField(max_length=20, blank=True, null=True)
+    advantages = models.JSONField(
+        default=list,
+        blank=True,
+        null=True,
+        help_text="Список преимуществ. Формат: [{'title': 'Заголовок', 'description': 'Описание'}]"
+    )
     training_schedule = models.JSONField(blank=True, null=True)  # или другой тип
     age_groups = models.CharField(max_length=100, blank=True, null=True)
     logo = models.URLField(blank=True, null=True)
