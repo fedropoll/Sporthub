@@ -59,14 +59,14 @@ MIDDLEWARE = [
 # ===== CORS =====
 CORS_ALLOW_ALL_ORIGINS = False
 CORS_ALLOWED_ORIGINS = [
-    "https://sporthub-genk.onrender.com",  # твой домен
+    "https://sporthub-genk.onrender.com",
 ]
+
 CORS_ALLOW_CREDENTIALS = True
 
-# Чтобы Swagger мог отправлять токен
-CORS_ALLOW_HEADERS = list(default_headers) + [
-    "authorization",
-]
+from corsheaders.defaults import default_headers
+CORS_ALLOW_HEADERS = list(default_headers) + ["authorization"]
+CORS_EXPOSE_HEADERS = ["Authorization"]
 
 # HTTPS proxy (Render работает через HTTPS)
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
