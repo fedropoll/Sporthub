@@ -54,9 +54,11 @@ MIDDLEWARE = [
 ]
 
 # ===== CORS =====
+CORS_ALLOW_ALL_ORIGINS = False
 CORS_ALLOWED_ORIGINS = [
-    "https://sporthub-genk.onrender.com",  # твой Render URL
+    "https://sporthub-genk.onrender.com",
 ]
+
 # ===== EMAIL =====
 EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
 EMAIL_HOST = os.getenv("EMAIL_HOST", "smtp.gmail.com")
