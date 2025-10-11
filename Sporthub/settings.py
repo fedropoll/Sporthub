@@ -13,6 +13,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = os.getenv("SECRET_KEY", "dev-secret-key")
 DEBUG = os.getenv("DEBUG", "True").lower() in ("1", "true", "yes")
 ALLOWED_HOSTS = os.getenv("DJANGO_ALLOWED_HOSTS", "127.0.0.1,localhost").split(",")
+print("ALLOWED_HOSTS =", ALLOWED_HOSTS)
 
 # ===== DATABASE =====
 USE_SQLITE = os.getenv("USE_SQLITE", "").lower() in ("1", "true", "yes")
@@ -35,7 +36,7 @@ else:
 
 # ===== STATIC & MEDIA =====
 STATIC_URL = "/static/"
-STATIC_ROOT = BASE_DIR / "staticfiles"  # WhiteNoise будет отдавать отсюда
+STATIC_ROOT = BASE_DIR / "staticfiles"
 MEDIA_URL = "/media/"
 MEDIA_ROOT = BASE_DIR / "media"
 os.makedirs(MEDIA_ROOT, exist_ok=True)
@@ -44,7 +45,7 @@ os.makedirs(MEDIA_ROOT, exist_ok=True)
 MIDDLEWARE = [
     "corsheaders.middleware.CorsMiddleware",
     "django.middleware.security.SecurityMiddleware",
-    "whitenoise.middleware.WhiteNoiseMiddleware",  # <- обязательно
+    "whitenoise.middleware.WhiteNoiseMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
@@ -71,7 +72,7 @@ INSTALLED_APPS = [
     "django.contrib.contenttypes",
     "django.contrib.sessions",
     "django.contrib.messages",
-    "django.contrib.staticfiles",  # нужно для Swagger
+    "django.contrib.staticfiles",
 
     "corsheaders",
     "rest_framework",
