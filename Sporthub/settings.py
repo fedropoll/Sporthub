@@ -12,7 +12,9 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # ===== SECRET & DEBUG =====
 SECRET_KEY = os.getenv("SECRET_KEY", "dev-secret-key")
 DEBUG = os.getenv("DEBUG", "False").lower() in ("1", "true", "yes")
-ALLOWED_HOSTS = os.getenv("DJANGO_ALLOWED_HOSTS", "127.0.0.1,localhost").split(",")
+
+# Разрешённые хосты
+ALLOWED_HOSTS = ["sporthub-genk.onrender.com"]
 
 # ===== DATABASE =====
 USE_SQLITE = os.getenv("USE_SQLITE", "").lower() in ("1", "true", "yes")
@@ -58,6 +60,10 @@ CORS_ALLOW_ALL_ORIGINS = False
 CORS_ALLOWED_ORIGINS = [
     "https://sporthub-genk.onrender.com",
 ]
+CORS_ALLOW_CREDENTIALS = True
+
+# ===== HTTPS proxy =====
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 
 # ===== EMAIL =====
 EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
