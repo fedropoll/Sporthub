@@ -187,3 +187,39 @@ Starting development server at http://0.0.0.0:8001/
 Quit the server with CONTROL-C.
 
 INFO 2025-10-11 05:09:00,646 autoreload Watching for file changes with StatReloader
+INFO 2025-10-11 05:20:37,384 autoreload /home/asylbek/Desktop/Sporthub/Sporthub/settings.py changed, reloading.
+INFO:django.utils.autoreload:/home/asylbek/Desktop/Sporthub/Sporthub/settings.py changed, reloading.
+Performing system checks...
+
+System check identified no issues (0 silenced).
+October 11, 2025 - 05:09:00
+Django version 5.2.5, using settings 'Sporthub.settings'
+Starting development server at http://0.0.0.0:8001/
+Quit the server with CONTROL-C.
+
+WARNING: This is a development server. Do not use it in a production setting. Use a production WSGI or ASGI server instead.
+For more information on production servers see: https://docs.djangoproject.com/en/5.2/howto/deployment/
+Traceback (most recent call last):
+  File "/home/asylbek/Desktop/Sporthub/manage.py", line 22, in <module>
+    main()
+  File "/home/asylbek/Desktop/Sporthub/manage.py", line 18, in main
+    execute_from_command_line(sys.argv)
+  File "/home/asylbek/Desktop/Sporthub/venv/lib/python3.10/site-packages/django/core/management/__init__.py", line 442, in execute_from_command_line
+    utility.execute()
+  File "/home/asylbek/Desktop/Sporthub/venv/lib/python3.10/site-packages/django/core/management/__init__.py", line 436, in execute
+    self.fetch_command(subcommand).run_from_argv(self.argv)
+  File "/home/asylbek/Desktop/Sporthub/venv/lib/python3.10/site-packages/django/core/management/base.py", line 416, in run_from_argv
+    self.execute(*args, **cmd_options)
+  File "/home/asylbek/Desktop/Sporthub/venv/lib/python3.10/site-packages/django/core/management/commands/runserver.py", line 69, in execute
+    super().execute(*args, **options)
+  File "/home/asylbek/Desktop/Sporthub/venv/lib/python3.10/site-packages/django/core/management/base.py", line 460, in execute
+    output = self.handle(*args, **options)
+  File "/home/asylbek/Desktop/Sporthub/venv/lib/python3.10/site-packages/django/core/management/commands/runserver.py", line 80, in handle
+    if not settings.DEBUG and not settings.ALLOWED_HOSTS:
+  File "/home/asylbek/Desktop/Sporthub/venv/lib/python3.10/site-packages/django/conf/__init__.py", line 81, in __getattr__
+    self._setup(name)
+  File "/home/asylbek/Desktop/Sporthub/venv/lib/python3.10/site-packages/django/conf/__init__.py", line 68, in _setup
+    self._wrapped = Settings(settings_module)
+  File "/home/asylbek/Desktop/Sporthub/venv/lib/python3.10/site-packages/django/conf/__init__.py", line 183, in __init__
+    raise ImproperlyConfigured(
+django.core.exceptions.ImproperlyConfigured: The ALLOWED_HOSTS setting must be a list or a tuple.
