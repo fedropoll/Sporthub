@@ -2,6 +2,7 @@ import os
 from pathlib import Path
 from datetime import timedelta
 import dj_database_url
+from corsheaders.defaults import default_headers
 from dotenv import load_dotenv
 
 # ===== Загрузка .env =====
@@ -58,11 +59,16 @@ MIDDLEWARE = [
 # ===== CORS =====
 CORS_ALLOW_ALL_ORIGINS = False
 CORS_ALLOWED_ORIGINS = [
-    "https://sporthub-genk.onrender.com",
+    "https://sporthub-genk.onrender.com",  # твой домен
 ]
 CORS_ALLOW_CREDENTIALS = True
 
-# ===== HTTPS proxy =====
+# Чтобы Swagger мог отправлять токен
+CORS_ALLOW_HEADERS = list(default_headers) + [
+    "authorization",
+]
+
+# HTTPS proxy (Render работает через HTTPS)
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 
 # ===== EMAIL =====
