@@ -11,9 +11,8 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 # ===== SECRET & DEBUG =====
 SECRET_KEY = os.getenv("SECRET_KEY", "dev-secret-key")
-DEBUG = os.getenv("DEBUG", "True").lower() in ("1", "true", "yes")
-ALLOWED_HOSTS = os.getenv("DJANGO_ALLOWED_HOSTS", "127.0.0.1,localhost,sporthub-genk.onrender.com").split(",")
-print("ALLOWED_HOSTS =", ALLOWED_HOSTS)
+DEBUG = os.getenv("DEBUG", "False").lower() in ("1", "true", "yes")
+ALLOWED_HOSTS = os.getenv("DJANGO_ALLOWED_HOSTS", "127.0.0.1,localhost").split(",")
 
 # ===== DATABASE =====
 USE_SQLITE = os.getenv("USE_SQLITE", "").lower() in ("1", "true", "yes")
@@ -30,7 +29,7 @@ else:
         "default": dj_database_url.config(
             default=os.getenv("DATABASE_URL"),
             conn_max_age=600,
-            ssl_require=False,
+            ssl_require=True,  # Для Render PostgreSQL нужно SSL
         )
     }
 
@@ -59,7 +58,7 @@ CORS_ALLOW_ALL_ORIGINS = True
 
 # ===== EMAIL =====
 EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
-EMAIL_HOST = os.getenv("EMAIL_HOST")
+EMAIL_HOST = os.getenv("EMAIL_HOST", "smtp.gmail.com")
 EMAIL_PORT = int(os.getenv("EMAIL_PORT", 587))
 EMAIL_USE_TLS = os.getenv("EMAIL_USE_TLS", "True").lower() in ("1", "true", "yes")
 EMAIL_HOST_USER = os.getenv("EMAIL_HOST_USER")
@@ -78,7 +77,6 @@ INSTALLED_APPS = [
     "rest_framework",
     "drf_yasg",
     "django_filters",
-    "rest_framework_simplejwt",
     "rest_framework_simplejwt.token_blacklist",
 
     "main",
@@ -143,14 +141,16 @@ LOGGING = {
     "version": 1,
     "disable_existing_loggers": False,
     "formatters": {
-        "verbose": {
-            "format": "{levelname} {asctime} {module} {message}",
-            "style": "{",
-        },
+        "verbose": {"format": "{levelname} {asctime} {module} {message}", "style": "{"},
     },
     "handlers": {
         "console": {"class": "logging.StreamHandler", "formatter": "verbose"},
-        "file": {"level": "ERROR", "class": "logging.FileHandler", "filename": "debug.log", "formatter": "verbose"},
+        "file": {
+            "level": "ERROR",
+            "class": "logging.FileHandler",
+            "filename": BASE_DIR / "debug.log",
+            "formatter": "verbose",
+        },
     },
     "loggers": {
         "django": {"handlers": ["console", "file"], "level": "INFO", "propagate": True},
